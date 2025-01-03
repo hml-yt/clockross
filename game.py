@@ -12,7 +12,8 @@ import random
 pygame.init()
 
 # Screen dimensions
-WIDTH, HEIGHT = 1280, 720
+# WIDTH, HEIGHT = 1280, 720
+WIDTH, HEIGHT = 480, 320
 
 # Colors
 TRANSPARENT_WHITE = (255, 255, 255, 76)  # RGBA (76 = 30% transparency)
@@ -27,17 +28,26 @@ api_surface = pygame.Surface((WIDTH, HEIGHT))
 
 # Set up the clock hand dimensions
 CENTER = (WIDTH // 2, HEIGHT // 2)
-SECOND_HAND_LENGTH = 300
-MINUTE_HAND_LENGTH = 230
-HOUR_HAND_LENGTH = 180
+SECOND_HAND_LENGTH = HEIGHT // 2 - 20
+MINUTE_HAND_LENGTH = SECOND_HAND_LENGTH * 0.8
+HOUR_HAND_LENGTH = MINUTE_HAND_LENGTH * 0.8
+
+# Transition parameters
+TRANSITION_DURATION = 3000  # Duration of the transition in milliseconds (1 second)
+FADE_STEPS = 50  # Number of steps in the fade
 
 # Background image shared between threads
 background_image = None
+new_background_image = None
+transition_start_time = 0
 background_lock = threading.Lock()  # Lock to ensure thread safety when updating the background
 
 # Load the overlay image
 overlay_image = pygame.image.load("overlay.png").convert_alpha()
-overlay_image = pygame.transform.scale(overlay_image, (WIDTH, HEIGHT))
+overlay_image = pygame.transform.scale(overlay_image, (HEIGHT, HEIGHT))
+# Calculate the position to center the overlay
+overlay_x = (WIDTH - overlay_image.get_width()) // 2
+overlay_y = (HEIGHT - overlay_image.get_height()) // 2
 
 # --- Load Prompts from File ---
 def load_prompts(filepath):
@@ -108,7 +118,7 @@ def generate_hour_minute_base64():
 
 # Function to handle the API call in a background thread
 def fetch_background():
-    global background_image
+    global new_background_image, transition_start_time
 
     while True:
         base64_encoded_image = generate_hour_minute_base64()
@@ -139,7 +149,7 @@ def fetch_background():
                     }
                 },
                 "sampler_name": "DPM++ 2M Karras",
-                "negative_prompt": "(worst quality, low quality:1.4), watermark, signature, text",
+                "negative_prompt": "asian, (worst quality, low quality:1.4), watermark, signature, flower, facial marking, (women:1.2), (female:1.2), blue jeans, 3d, render, doll, plastic, blur, haze, monochrome, b&w, text, (ugly:1.2), unclear eyes, no arms, bad anatomy, cropped, censoring, asymmetric eyes, bad anatomy, bad proportions, cropped, cross-eyed, deformed, extra arms, extra fingers, extra limbs, fused fingers, jpeg artifacts, malformed, mangled hands, misshapen body, missing arms, missing fingers, missing hands, missing legs, poorly drawn, tentacle finger, too many arms, too many fingers, (worst quality, low quality:1.4), watermark, signature,illustration,painting, anime,cartoon",
                 "steps": 12,
                 "width": 640,
                 "cfg_scale": 7
@@ -156,10 +166,11 @@ def fetch_background():
                 if response.status_code == 200:
                     response_data = response.json()
                     if "images" in response_data:
-                        # Decode the first image and set it as the background
+                        # Decode the first image and set it as the new background
                         with background_lock:
-                            background_image = base64.b64decode(response_data["images"][0])
-                        print("✅ Background updated.")
+                            new_background_image = base64.b64decode(response_data["images"][0])
+                            transition_start_time = pygame.time.get_ticks()
+                        print("✅ New background image received.")
                     else:
                         print(f"❌ Image not found in response. Response body: {response.text}")
                 else:
@@ -170,17 +181,47 @@ def fetch_background():
         # Wait 15 seconds before making the next request
         pygame.time.wait(15000)
 
+def render_transition():
+    global background_image
+
+    current_time = pygame.time.get_ticks()
+    time_since_transition_start = current_time - transition_start_time
+
+    if time_since_transition_start < TRANSITION_DURATION:
+        # Calculate the current alpha value for cross-fading
+        alpha = int((time_since_transition_start / TRANSITION_DURATION) * 255)
+
+        # Create temporary surfaces for blending
+        old_bg_surface = pygame.Surface((WIDTH, HEIGHT))
+        new_bg_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+
+        # Draw and scale the old and new background images
+        if background_image:
+            old_bg_surface.blit(pygame.transform.scale(pygame.image.load(BytesIO(background_image)), (WIDTH, HEIGHT)), (0, 0))
+        if new_background_image:
+            new_bg_surface.blit(pygame.transform.scale(pygame.image.load(BytesIO(new_background_image)), (WIDTH, HEIGHT)), (0, 0))
+
+        # Blend the new background image onto the old one
+        new_bg_surface.set_alpha(alpha)
+        old_bg_surface.blit(new_bg_surface, (0, 0))
+
+        # Draw the blended image onto the screen
+        screen.blit(old_bg_surface, (0, 0))
+    else:
+        # Transition is complete, update the background image
+        if new_background_image:
+            background_image = new_background_image
+            # Scale the new background image
+            scaled_bg_image = pygame.transform.scale(pygame.image.load(BytesIO(background_image)), (WIDTH, HEIGHT))
+            screen.blit(scaled_bg_image, (0, 0))
+
 # Render the second hand on top of the API response background and overlay
 def render_second_hand():
-    # Draw the API response background
-    with background_lock:
-        if background_image:
-            bg_surface = pygame.image.load(BytesIO(background_image))
-            bg_surface = pygame.transform.scale(bg_surface, (WIDTH, HEIGHT))
-            screen.blit(bg_surface, (0, 0))
+    # Draw the API response background with transition
+    render_transition()
 
-    # Draw the overlay image
-    screen.blit(overlay_image, (0, 0))
+    # Draw the overlay image centered on the screen
+    screen.blit(overlay_image, (overlay_x, overlay_y))
 
     # Get the current time
     now = datetime.now()
