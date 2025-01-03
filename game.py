@@ -12,12 +12,12 @@ import random
 pygame.init()
 
 # Screen dimensions
-# WIDTH, HEIGHT = 1280, 720
-WIDTH, HEIGHT = 480, 320
+WIDTH, HEIGHT = 1280, 720
+# WIDTH, HEIGHT = 480, 320
 
 # Colors
 TRANSPARENT_WHITE = (255, 255, 255, 76)  # RGBA (76 = 30% transparency)
-SOLID_BACKGROUND = (15, 15, 15)  # Dark grey color for the background
+SOLID_BACKGROUND = (50, 50, 50)  # Dark grey color for the background
 
 # Create the display surface for rendering
 screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
@@ -30,7 +30,7 @@ api_surface = pygame.Surface((WIDTH, HEIGHT))
 CENTER = (WIDTH // 2, HEIGHT // 2)
 SECOND_HAND_LENGTH = HEIGHT // 2 - 20
 MINUTE_HAND_LENGTH = SECOND_HAND_LENGTH * 0.8
-HOUR_HAND_LENGTH = MINUTE_HAND_LENGTH * 0.8
+HOUR_HAND_LENGTH = MINUTE_HAND_LENGTH * 0.7
 
 # Transition parameters
 TRANSITION_DURATION = 3000  # Duration of the transition in milliseconds (1 second)
