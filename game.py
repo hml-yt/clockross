@@ -20,7 +20,7 @@ TRANSPARENT_WHITE = (255, 255, 255, 76)  # RGBA (76 = 30% transparency)
 SOLID_BACKGROUND = (15, 15, 15)  # Dark grey color for the background
 
 # Create the display surface for rendering
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
+screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
 pygame.display.set_caption("Clock App")
 
 # Create a temporary surface for hour/minute hands
@@ -197,9 +197,9 @@ def render_transition():
 
         # Draw and scale the old and new background images
         if background_image:
-            old_bg_surface.blit(pygame.transform.scale(pygame.image.load(BytesIO(background_image)), (WIDTH, HEIGHT)), (0, 0))
+            old_bg_surface.blit(pygame.transform.smoothscale(pygame.image.load(BytesIO(background_image)), (WIDTH, HEIGHT)), (0, 0))
         if new_background_image:
-            new_bg_surface.blit(pygame.transform.scale(pygame.image.load(BytesIO(new_background_image)), (WIDTH, HEIGHT)), (0, 0))
+            new_bg_surface.blit(pygame.transform.smoothscale(pygame.image.load(BytesIO(new_background_image)), (WIDTH, HEIGHT)), (0, 0))
 
         # Blend the new background image onto the old one
         new_bg_surface.set_alpha(alpha)
@@ -212,7 +212,7 @@ def render_transition():
         if new_background_image:
             background_image = new_background_image
             # Scale the new background image
-            scaled_bg_image = pygame.transform.scale(pygame.image.load(BytesIO(background_image)), (WIDTH, HEIGHT))
+            scaled_bg_image = pygame.transform.smoothscale(pygame.image.load(BytesIO(background_image)), (WIDTH, HEIGHT))
             screen.blit(scaled_bg_image, (0, 0))
 
 # Render the second hand on top of the API response background and overlay
