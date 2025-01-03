@@ -33,6 +33,10 @@ HOUR_HAND_LENGTH = 180
 background_image = None
 background_lock = threading.Lock()  # Lock to ensure thread safety when updating the background
 
+# Load the overlay image
+overlay_image = pygame.image.load("overlay.png").convert_alpha()
+overlay_image = pygame.transform.scale(overlay_image, (WIDTH, HEIGHT))
+
 
 # Function to calculate rectangle vertices for clock hands
 def get_hand_vertices(length, angle, width):
@@ -57,7 +61,7 @@ def generate_hour_minute_base64():
     hour_angle = -math.pi / 2 + 2 * math.pi * ((hour + minute / 60) / 12)
 
     # Clear the API surface
-    api_surface.fill((0, 0, 0, 0))  # Transparent background
+    api_surface.fill((0, 0, 0, 255))  # Transparent background
 
     # Draw hour and minute hands as rectangles
     hour_vertices = get_hand_vertices(HOUR_HAND_LENGTH, hour_angle, 50)  # Hour hand width = 50
@@ -72,6 +76,17 @@ def generate_hour_minute_base64():
 
     # Convert buffer to Base64
     base64_string = base64.b64encode(buffer.read()).decode("utf-8")
+    
+        # --- Debug: Save Base64 image to a file ---
+    try:
+        image_data = base64.b64decode(base64_string)
+        with open("debug_hand_image.png", "wb") as f:
+            f.write(image_data)
+        print("Debug: Base64 image saved to debug_hand_image.png")
+    except Exception as e:
+        print(f"Error saving debug image: {e}")
+    # --- End of Debug ---
+
     return base64_string
 
 
@@ -92,9 +107,11 @@ def fetch_background():
                         "args": [
                             {
                                 "enabled": True,
-                                "image": {"image": base64_encoded_image},
+                                "image": {
+                                    "image": base64_encoded_image,
+                                },
                                 "model": "control_v11f1e_sd15_tile",
-                                "resize_mode": "Crop and Resize",
+                                "resize_mode": "Just Resize",
                                 "weight": 1.2,
                                 "control_mode": "Balanced",
                                 "guidance_start": 0.05,
@@ -132,9 +149,8 @@ def fetch_background():
 
         # Wait 15 seconds before making the next request
         pygame.time.wait(15000)
-
-
-# Render the second hand on top of the API response background
+        
+# Render the second hand on top of the API response background and overlay
 def render_second_hand():
     # Draw the API response background
     with background_lock:
@@ -142,6 +158,9 @@ def render_second_hand():
             bg_surface = pygame.image.load(BytesIO(background_image))
             bg_surface = pygame.transform.scale(bg_surface, (WIDTH, HEIGHT))
             screen.blit(bg_surface, (0, 0))
+
+    # Draw the overlay image
+    screen.blit(overlay_image, (0, 0))
 
     # Get the current time
     now = datetime.now()
