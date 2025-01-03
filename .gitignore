@@ -4,3 +4,4 @@ include/
 bin/
 pyvenv.cfg
 generated_image*
+debug_*
