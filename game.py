@@ -6,6 +6,7 @@ import requests
 import json
 from io import BytesIO
 import threading
+import random
 
 # Initialize Pygame
 pygame.init()
@@ -15,13 +16,14 @@ WIDTH, HEIGHT = 1280, 720
 
 # Colors
 TRANSPARENT_WHITE = (255, 255, 255, 76)  # RGBA (76 = 30% transparency)
+SOLID_BACKGROUND = (15, 15, 15)  # Dark grey color for the background
 
 # Create the display surface for rendering
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Clock App")
 
 # Create a temporary surface for hour/minute hands
-api_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+api_surface = pygame.Surface((WIDTH, HEIGHT))
 
 # Set up the clock hand dimensions
 CENTER = (WIDTH // 2, HEIGHT // 2)
@@ -37,6 +39,20 @@ background_lock = threading.Lock()  # Lock to ensure thread safety when updating
 overlay_image = pygame.image.load("overlay.png").convert_alpha()
 overlay_image = pygame.transform.scale(overlay_image, (WIDTH, HEIGHT))
 
+# --- Load Prompts from File ---
+def load_prompts(filepath):
+    """Loads prompts from a text file, one prompt per line."""
+    prompts = []
+    try:
+        with open(filepath, "r") as f:
+            for line in f:
+                prompts.append(line.strip())
+    except FileNotFoundError:
+        print(f"Error: Prompts file not found at {filepath}")
+    return prompts
+
+# Load the prompts from prompts.txt
+prompts = load_prompts("prompts.txt")
 
 # Function to calculate rectangle vertices for clock hands
 def get_hand_vertices(length, angle, width):
@@ -60,8 +76,8 @@ def generate_hour_minute_base64():
     minute_angle = -math.pi / 2 + 2 * math.pi * (minute / 60)
     hour_angle = -math.pi / 2 + 2 * math.pi * ((hour + minute / 60) / 12)
 
-    # Clear the API surface
-    api_surface.fill((0, 0, 0, 255))  # Transparent background
+    # Clear the API surface with the solid background color
+    api_surface.fill(SOLID_BACKGROUND)
 
     # Draw hour and minute hands as rectangles
     hour_vertices = get_hand_vertices(HOUR_HAND_LENGTH, hour_angle, 50)  # Hour hand width = 50
@@ -71,13 +87,13 @@ def generate_hour_minute_base64():
 
     # Save the API surface to a buffer
     buffer = BytesIO()
-    pygame.image.save(api_surface, buffer, "PNG")
+    pygame.image.save(api_surface, buffer)
     buffer.seek(0)
 
     # Convert buffer to Base64
     base64_string = base64.b64encode(buffer.read()).decode("utf-8")
-    
-        # --- Debug: Save Base64 image to a file ---
+
+    # --- Debug: Save Base64 image to a file ---
     try:
         image_data = base64.b64decode(base64_string)
         with open("debug_hand_image.png", "wb") as f:
@@ -98,18 +114,20 @@ def fetch_background():
         base64_encoded_image = generate_hour_minute_base64()
         if base64_encoded_image:
             url = "http://orinputer.local:7860/sdapi/v1/txt2img"
+
+            # Randomly select a prompt
+            random_prompt = random.choice(prompts)
+
             payload = {
                 "height": 360,
                 "batch_size": 1,
-                "prompt": "A lush rainforest with dense foliage, cascading waterfalls, vibrant flowers, beams of sunlight piercing through the canopy, hyper-detailed, HDR, photorealistic, 8k",
+                "prompt": random_prompt,
                 "alwayson_scripts": {
                     "controlnet": {
                         "args": [
                             {
                                 "enabled": True,
-                                "image": {
-                                    "image": base64_encoded_image,
-                                },
+                                "image": base64_encoded_image,  # Corrected to 'image'
                                 "model": "control_v11f1e_sd15_tile",
                                 "resize_mode": "Just Resize",
                                 "weight": 1.2,
@@ -128,7 +146,7 @@ def fetch_background():
             }
 
             try:
-                print("🚀 Sending request to Stable Diffusion API with ControlNet...")
+                print(f"🚀 Sending request to Stable Diffusion API with prompt: {random_prompt}")
                 response = requests.post(
                     url=url,
                     headers={"Content-Type": "application/json"},
@@ -142,14 +160,16 @@ def fetch_background():
                         with background_lock:
                             background_image = base64.b64decode(response_data["images"][0])
                         print("✅ Background updated.")
+                    else:
+                        print(f"❌ Image not found in response. Response body: {response.text}")
                 else:
-                    print(f"❌ Request failed. Response body: {response.text}")
+                    print(f"❌ Request failed with status code: {response.status_code}. Response body: {response.text}")
             except Exception as e:
                 print(f"❌ HTTP Request failed: {e}")
 
         # Wait 15 seconds before making the next request
         pygame.time.wait(15000)
-        
+
 # Render the second hand on top of the API response background and overlay
 def render_second_hand():
     # Draw the API response background
