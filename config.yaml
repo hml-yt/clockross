@@ -46,20 +46,3 @@ animation:
     poly_n: 5
     poly_sigma: 1.2
     flags: 0
-enhancement:
-  bilateral_filter:
-    d: 9
-    sigma_color: 75
-    sigma_space: 75
-  unsharp_mask:
-    blur_size:
-    - 0
-    - 0
-    sigma: 3.0
-    amount: 1.5
-    threshold: -0.5
-  clahe:
-    clip_limit: 2.0
-    tile_grid_size:
-    - 8
-    - 8

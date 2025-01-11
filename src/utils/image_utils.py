@@ -7,35 +7,8 @@ import cv2
 import numpy as np
 from ..config import Config
 
-def enhance_image(cv2_image):
-    """Apply image enhancement techniques"""
-    config = Config()
-    
-    # Apply bilateral filter for noise reduction while preserving edges
-    bf = config.enhancement['bilateral_filter']
-    denoised = cv2.bilateralFilter(cv2_image, bf['d'], bf['sigma_color'], bf['sigma_space'])
-    
-    # Enhance details using unsharp masking
-    um = config.enhancement['unsharp_mask']
-    gaussian = cv2.GaussianBlur(denoised, tuple(um['blur_size']), um['sigma'])
-    unsharp_image = cv2.addWeighted(denoised, 1 + um['amount'], gaussian, um['threshold'], 0)
-    
-    # Enhance contrast using CLAHE
-    clahe_config = config.enhancement['clahe']
-    lab = cv2.cvtColor(unsharp_image, cv2.COLOR_BGR2LAB)
-    l, a, b = cv2.split(lab)
-    clahe = cv2.createCLAHE(
-        clipLimit=clahe_config['clip_limit'],
-        tileGridSize=tuple(clahe_config['tile_grid_size'])
-    )
-    cl = clahe.apply(l)
-    enhanced = cv2.merge((cl,a,b))
-    enhanced = cv2.cvtColor(enhanced, cv2.COLOR_LAB2BGR)
-    
-    return enhanced
-
 def scale_pil_image_to_display(pil_image, target_width, target_height):
-    """Scale a PIL image to the target resolution with enhanced quality"""
+    """Scale a PIL image to the target resolution"""
     # Convert PIL to CV2
     cv2_image = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
     
@@ -53,11 +26,8 @@ def scale_pil_image_to_display(pil_image, target_width, target_height):
     scaled = cv2.resize(cv2_image, (target_width, target_height), 
                        interpolation=interpolation)
     
-    # Apply enhancement
-    enhanced = enhance_image(scaled)
-    
     # Convert back to PIL
-    return Image.fromarray(cv2.cvtColor(enhanced, cv2.COLOR_BGR2RGB))
+    return Image.fromarray(cv2.cvtColor(scaled, cv2.COLOR_BGR2RGB))
 
 def pil_to_cv2(pil_image):
     """Convert PIL image to CV2 format"""

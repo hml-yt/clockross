@@ -4,8 +4,7 @@ from .image_utils import (
     scale_pil_image_to_display,
     pil_to_cv2,
     cv2_to_surface,
-    morph_transition,
-    enhance_image
+    morph_transition
 )
 
 __all__ = [
@@ -14,6 +13,5 @@ __all__ = [
     'scale_pil_image_to_display',
     'pil_to_cv2',
     'cv2_to_surface',
-    'morph_transition',
-    'enhance_image'
+    'morph_transition'
 ] 
