@@ -18,7 +18,7 @@ class BackgroundUpdater:
         self.current_color = (255, 255, 255, 75)  # Default color
         self.previous_color = None
         self.transition_start = 0
-        self.transition_duration = 5.0  # seconds
+        self.transition_duration = 3.0  # seconds
         self.lock = threading.Lock()
         self.last_attempt = 0
         self.is_updating = False
