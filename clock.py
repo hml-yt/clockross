@@ -18,7 +18,11 @@ pygame.init()
 WIDTH = 640
 HEIGHT = 360
 CENTER = (WIDTH // 2, HEIGHT // 2)
-CLOCK_RADIUS = min(WIDTH, HEIGHT) // 3
+CLOCK_RADIUS = min(WIDTH, HEIGHT) // 2 - 20  # Enlarged to almost fill the window
+MARKER_LENGTH = 30  # Length of hour markers
+HOUR_HAND_LENGTH = CLOCK_RADIUS * 0.6  # Longer hour hand
+MINUTE_HAND_LENGTH = CLOCK_RADIUS * 0.8  # Longer minute hand
+SECOND_HAND_LENGTH = CLOCK_RADIUS * 0.9  # Longer second hand
 API_URL = "http://orinputer.local:7860/sdapi/v1/txt2img"
 BACKGROUND_COLOR = (0, 0, 0)  # Pure black
 
@@ -102,41 +106,39 @@ def draw_clock_hands(hours, minutes):
     api_surface.fill((0, 0, 0))  # Fill with black background
     
     # Draw clock circle
-    pygame.draw.circle(api_surface, WHITE, CENTER, CLOCK_RADIUS, 2)
+    pygame.draw.circle(api_surface, WHITE, CENTER, CLOCK_RADIUS, 3)
     
     # Hour hand
     hour_angle = math.radians((hours % 12 + minutes / 60) * 360 / 12 - 90)
-    hour_length = CLOCK_RADIUS * 0.5
     hour_end = (
-        CENTER[0] + hour_length * math.cos(hour_angle),
-        CENTER[1] + hour_length * math.sin(hour_angle)
+        CENTER[0] + HOUR_HAND_LENGTH * math.cos(hour_angle),
+        CENTER[1] + HOUR_HAND_LENGTH * math.sin(hour_angle)
     )
-    draw_tapered_line(api_surface, WHITE, CENTER, hour_end, 20, 4)
+    draw_tapered_line(api_surface, WHITE, CENTER, hour_end, 24, 6)
     
     # Minute hand
     minute_angle = math.radians(minutes * 360 / 60 - 90)
-    minute_length = CLOCK_RADIUS * 0.7
     minute_end = (
-        CENTER[0] + minute_length * math.cos(minute_angle),
-        CENTER[1] + minute_length * math.sin(minute_angle)
+        CENTER[0] + MINUTE_HAND_LENGTH * math.cos(minute_angle),
+        CENTER[1] + MINUTE_HAND_LENGTH * math.sin(minute_angle)
     )
-    draw_tapered_line(api_surface, WHITE, CENTER, minute_end, 12, 2)
+    draw_tapered_line(api_surface, WHITE, CENTER, minute_end, 16, 4)
     
     # Draw hour markers
     for hour in range(12):
         angle = math.radians(hour * 360 / 12 - 90)
         start_pos = (
-            CENTER[0] + (CLOCK_RADIUS - 20) * math.cos(angle),
-            CENTER[1] + (CLOCK_RADIUS - 20) * math.sin(angle)
+            CENTER[0] + (CLOCK_RADIUS - MARKER_LENGTH) * math.cos(angle),
+            CENTER[1] + (CLOCK_RADIUS - MARKER_LENGTH) * math.sin(angle)
         )
         end_pos = (
             CENTER[0] + CLOCK_RADIUS * math.cos(angle),
             CENTER[1] + CLOCK_RADIUS * math.sin(angle)
         )
-        pygame.draw.line(api_surface, WHITE, start_pos, end_pos, 2)
+        pygame.draw.line(api_surface, WHITE, start_pos, end_pos, 3)
     
     # Draw center dot
-    pygame.draw.circle(api_surface, WHITE, CENTER, 8)
+    pygame.draw.circle(api_surface, WHITE, CENTER, 10)
     
     save_debug_image(api_surface, "clockface")
     
@@ -264,20 +266,20 @@ def save_debug_image(image, prefix):
 def draw_clock_overlay(surface):
     """Draw clock face overlay with hour markers and outer circle"""
     # Draw outer circle
-    pygame.draw.circle(surface, TRANSPARENT_WHITE, CENTER, CLOCK_RADIUS, 2)
+    pygame.draw.circle(surface, TRANSPARENT_WHITE, CENTER, CLOCK_RADIUS, 3)
     
     # Draw hour markers
     for hour in range(12):
         angle = math.radians(hour * 360 / 12 - 90)
         start_pos = (
-            CENTER[0] + (CLOCK_RADIUS - 20) * math.cos(angle),
-            CENTER[1] + (CLOCK_RADIUS - 20) * math.sin(angle)
+            CENTER[0] + (CLOCK_RADIUS - MARKER_LENGTH) * math.cos(angle),
+            CENTER[1] + (CLOCK_RADIUS - MARKER_LENGTH) * math.sin(angle)
         )
         end_pos = (
             CENTER[0] + CLOCK_RADIUS * math.cos(angle),
             CENTER[1] + CLOCK_RADIUS * math.sin(angle)
         )
-        pygame.draw.line(surface, TRANSPARENT_WHITE, start_pos, end_pos, 2)
+        pygame.draw.line(surface, TRANSPARENT_WHITE, start_pos, end_pos, 3)
 
 def main():
     print("Starting clock application...")
@@ -333,12 +335,11 @@ def main():
         
         # Draw seconds hand on overlay
         seconds_angle = math.radians(seconds * 360 / 60 - 90)
-        seconds_length = CLOCK_RADIUS * 0.8
         seconds_end = (
-            CENTER[0] + seconds_length * math.cos(seconds_angle),
-            CENTER[1] + seconds_length * math.sin(seconds_angle)
+            CENTER[0] + SECOND_HAND_LENGTH * math.cos(seconds_angle),
+            CENTER[1] + SECOND_HAND_LENGTH * math.sin(seconds_angle)
         )
-        draw_tapered_line(overlay_surface, TRANSPARENT_WHITE, CENTER, seconds_end, 4, 1)
+        draw_tapered_line(overlay_surface, TRANSPARENT_WHITE, CENTER, seconds_end, 6, 2)
         
         # Draw overlay
         screen.blit(overlay_surface, (0, 0))
