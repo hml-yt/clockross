@@ -8,17 +8,20 @@ from PIL import Image
 from datetime import datetime
 from .prompt_generator import PromptGenerator
 from ..utils import save_debug_image
+from ..config import Config
 
 class BackgroundUpdater:
     def __init__(self, api_url, debug=False):
+        self.config = Config()
         self.api_url = api_url
         self.debug = debug
         self.current_background = None
         self.previous_background = None
-        self.current_color = (255, 255, 255, 75)  # Default color
+        self.current_color = (255, 255, 255, self.config.clock['overlay_opacity'])  # Default color
         self.previous_color = None
         self.transition_start = 0
-        self.transition_duration = 3.0  # seconds
+        self.transition_duration = self.config.animation['transition_duration']
+        self.update_interval = self.config.animation['background_update_interval']
         self.lock = threading.Lock()
         self.last_attempt = 0
         self.is_updating = False
@@ -38,8 +41,8 @@ class BackgroundUpdater:
         # Calculate brightness for each pixel and find the brightest one
         brightest_pixel = max(pixels, key=lambda p: sum(p))
         
-        # Make it very transparent (75 for ~15% opacity)
-        return (*brightest_pixel, 75)
+        # Make it transparent according to config
+        return (*brightest_pixel, self.config.clock['overlay_opacity'])
     
     def _get_background_image(self, clock_image_base64):
         """Get a new background image from the Stable Diffusion API"""
@@ -140,4 +143,4 @@ class BackgroundUpdater:
     
     def should_update(self):
         """Check if it's time for a background update"""
-        return time.time() - self.last_attempt >= 15 
+        return time.time() - self.last_attempt >= self.update_interval 

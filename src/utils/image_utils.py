@@ -5,20 +5,29 @@ from PIL import Image
 from datetime import datetime
 import cv2
 import numpy as np
+from ..config import Config
 
 def enhance_image(cv2_image):
     """Apply image enhancement techniques"""
+    config = Config()
+    
     # Apply bilateral filter for noise reduction while preserving edges
-    denoised = cv2.bilateralFilter(cv2_image, 9, 75, 75)
+    bf = config.enhancement['bilateral_filter']
+    denoised = cv2.bilateralFilter(cv2_image, bf['d'], bf['sigma_color'], bf['sigma_space'])
     
     # Enhance details using unsharp masking
-    gaussian = cv2.GaussianBlur(denoised, (0, 0), 3.0)
-    unsharp_image = cv2.addWeighted(denoised, 1.5, gaussian, -0.5, 0)
+    um = config.enhancement['unsharp_mask']
+    gaussian = cv2.GaussianBlur(denoised, tuple(um['blur_size']), um['sigma'])
+    unsharp_image = cv2.addWeighted(denoised, 1 + um['amount'], gaussian, um['threshold'], 0)
     
     # Enhance contrast using CLAHE
+    clahe_config = config.enhancement['clahe']
     lab = cv2.cvtColor(unsharp_image, cv2.COLOR_BGR2LAB)
     l, a, b = cv2.split(lab)
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    clahe = cv2.createCLAHE(
+        clipLimit=clahe_config['clip_limit'],
+        tileGridSize=tuple(clahe_config['tile_grid_size'])
+    )
     cl = clahe.apply(l)
     enhanced = cv2.merge((cl,a,b))
     enhanced = cv2.cvtColor(enhanced, cv2.COLOR_LAB2BGR)
@@ -61,14 +70,24 @@ def cv2_to_surface(cv2_image):
 
 def morph_transition(old_img, new_img, progress):
     """Create a morphing effect between images using optical flow"""
+    config = Config()
+    flow_params = config.animation['morph_flow_params']
+    
     # Convert to grayscale for optical flow
     old_gray = cv2.cvtColor(old_img, cv2.COLOR_BGR2GRAY)
     new_gray = cv2.cvtColor(new_img, cv2.COLOR_BGR2GRAY)
     
-    # Calculate optical flow
+    # Calculate optical flow with configurable parameters
     flow = cv2.calcOpticalFlowFarneback(
         old_gray, new_gray,
-        None, 0.5, 3, 15, 3, 5, 1.2, 0
+        None,
+        flow_params['pyr_scale'],
+        flow_params['levels'],
+        flow_params['winsize'],
+        flow_params['iterations'],
+        flow_params['poly_n'],
+        flow_params['poly_sigma'],
+        flow_params['flags']
     )
     
     # Create the morphed image

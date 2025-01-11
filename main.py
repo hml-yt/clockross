@@ -11,6 +11,7 @@ from src.utils import (
     cv2_to_surface,
     morph_transition
 )
+from src.config import Config
 from PIL import Image
 import numpy as np
 import cv2
@@ -18,16 +19,19 @@ import cv2
 # Initialize Pygame
 pygame.init()
 
-# Get the display info
+# Get the display info and load config
 display_info = pygame.display.Info()
+config = Config()
+
+# Get display settings
 FULLSCREEN_WIDTH = display_info.current_w
 FULLSCREEN_HEIGHT = display_info.current_h
-WINDOWED_WIDTH = 1024
-WINDOWED_HEIGHT = 600
-API_WIDTH = 640
-API_HEIGHT = 360
-API_URL = "http://orinputer.local:7860/sdapi/v1/txt2img"
-BACKGROUND_COLOR = (0, 0, 0)  # Pure black
+WINDOWED_WIDTH = config.display['windowed_width']
+WINDOWED_HEIGHT = config.display['windowed_height']
+API_WIDTH = config.api['width']
+API_HEIGHT = config.api['height']
+API_URL = config.api['url']
+BACKGROUND_COLOR = tuple(config.display['background_color'])
 
 def parse_args():
     parser = argparse.ArgumentParser(description='AI-Powered Analog Clock')
@@ -56,7 +60,7 @@ def main():
     if debug:
         print("Debug mode enabled - saving debug images and showing verbose output")
     print(f"Display resolution: {display_width}x{display_height}")
-    print(f"Will refresh background every 15 seconds")
+    print(f"Will refresh background every {config.animation['background_update_interval']} seconds")
     print(f"API endpoint: {API_URL}")
     
     # Initialize components
@@ -154,7 +158,7 @@ def main():
         screen.blit(display_clock_face.overlay_surface, (0, 0))
         
         pygame.display.flip()
-        clock.tick(30)
+        clock.tick(config.display['fps'])
 
     pygame.quit()
 

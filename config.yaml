@@ -1,0 +1,54 @@
+# Display settings
+display:
+  windowed_width: 1024
+  windowed_height: 600
+  fps: 30
+  background_color: [0, 0, 0]  # RGB values
+
+# API settings
+api:
+  width: 640
+  height: 360
+  url: "http://orinputer.local:7860/sdapi/v1/txt2img"
+  background_color: [25, 25, 25]  # RGB values for the API template background
+
+# Clock settings
+clock:
+  radius_margin: 20  # Pixels to subtract from min(width, height)/2
+  marker_length: 30  # Length of hour markers
+  hour_hand_length_ratio: 0.6  # Relative to clock radius
+  minute_hand_length_ratio: 0.8
+  second_hand_length_ratio: 0.9
+  overlay_opacity: 75  # 0-255, used for clock face overlay and seconds hand
+  hour_hand_width: [24, 6]  # [base_width, tip_width]
+  minute_hand_width: [16, 4]
+  second_hand_width: [4, 1]
+  marker_width: 3
+
+# Animation settings
+animation:
+  transition_duration: 3.0  # seconds
+  background_update_interval: 15  # seconds
+  morph_flow_params:
+    pyr_scale: 0.5
+    levels: 3
+    winsize: 15
+    iterations: 3
+    poly_n: 5
+    poly_sigma: 1.2
+    flags: 0
+
+# Image enhancement settings
+enhancement:
+  bilateral_filter:
+    d: 9
+    sigma_color: 75
+    sigma_space: 75
+  unsharp_mask:
+    blur_size: [0, 0]  # Gaussian kernel size
+    sigma: 3.0
+    amount: 1.5
+    threshold: -0.5
+  clahe:
+    clip_limit: 2.0
+    tile_grid_size: [8, 8] 
