@@ -3,6 +3,7 @@ import argparse
 from datetime import datetime
 from src.clock import ClockFace
 from src.background import BackgroundUpdater
+from src.settings import SettingsUI
 from src.utils import (
     surface_to_base64,
     save_debug_image,
@@ -52,17 +53,6 @@ def main():
         display_width, display_height = FULLSCREEN_WIDTH, FULLSCREEN_HEIGHT
     pygame.display.set_caption("Analog Clock with AI Background")
     
-    # Hide the cursor in fullscreen mode
-    if not args.windowed:
-        pygame.mouse.set_visible(False)
-    
-    print("Starting clock application...")
-    if debug:
-        print("Debug mode enabled - saving debug images and showing verbose output")
-    print(f"Display resolution: {display_width}x{display_height}")
-    print(f"Will refresh background every {config.animation['background_update_interval']} seconds")
-    print(f"API endpoint: {API_URL}")
-    
     # Initialize components
     clock = pygame.time.Clock()
     # Use API dimensions for the clock face that will be sent to the API
@@ -70,6 +60,10 @@ def main():
     # Use display dimensions for the actual display clock face
     display_clock_face = ClockFace(display_width, display_height)
     background_updater = BackgroundUpdater(API_URL, debug=debug)
+    settings_ui = SettingsUI(display_width, display_height, background_updater)
+    
+    # Start with cursor hidden
+    pygame.mouse.set_visible(False)
     
     running = True
     first_background_received = False
@@ -84,6 +78,23 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:  # Left click
+                    if not settings_ui.handle_click(event.pos):
+                        # If settings didn't handle the click, toggle settings
+                        settings_ui.toggle()
+                        # Show/hide cursor based on settings visibility
+                        pygame.mouse.set_visible(settings_ui.visible)
+            elif event.type == pygame.MOUSEMOTION:
+                settings_ui.handle_motion(event.pos)
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    if settings_ui.visible:
+                        settings_ui.visible = False
+                        # Hide cursor when closing settings with ESC
+                        pygame.mouse.set_visible(False)
+                    else:
+                        running = False
         
         # Get current time
         now = datetime.now()
@@ -151,6 +162,9 @@ def main():
         
         # Draw overlay
         screen.blit(display_clock_face.overlay_surface, (0, 0))
+        
+        # Draw settings UI
+        settings_ui.draw(screen)
         
         pygame.display.flip()
         clock.tick(config.display['fps'])

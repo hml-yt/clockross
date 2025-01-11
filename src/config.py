@@ -19,9 +19,23 @@ class Config:
         with open(config_path, 'r') as f:
             self._config = yaml.safe_load(f)
     
+    def save(self):
+        """Save current configuration to file"""
+        config_path = Path('config.yaml')
+        with open(config_path, 'w') as f:
+            yaml.dump(self._config, f, default_flow_style=False, sort_keys=False)
+    
     def reload(self):
         """Reload configuration from file"""
         self._load_config()
+    
+    def update(self, section, key, value):
+        """Update a configuration value and save to file"""
+        if section in self._config and key in self._config[section]:
+            self._config[section][key] = value
+            self.save()
+            return True
+        return False
     
     @property
     def display(self):

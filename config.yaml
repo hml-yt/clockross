@@ -1,37 +1,43 @@
-# Display settings
 display:
   windowed_width: 1024
   windowed_height: 600
   fps: 30
-  background_color: [0, 0, 0]  # RGB values
-
-# API settings
+  background_color:
+  - 0
+  - 0
+  - 0
 api:
   width: 640
   height: 360
-  url: "http://orinputer.local:7860/sdapi/v1/txt2img"
-  background_color: [25, 25, 25]  # RGB values for the API template background
-
-# Clock settings
+  url: http://orinputer.local:7860/sdapi/v1/txt2img
+  background_color:
+  - 25
+  - 25
+  - 25
+  checkpoint: revAnimated_v2Pruned_393004
 clock:
-  radius_margin: 20  # Pixels to subtract from min(width, height)/2
-  marker_length: 30  # Length of hour markers
-  hour_hand_length_ratio: 0.6  # Relative to clock radius
+  radius_margin: 20
+  marker_length: 30
+  hour_hand_length_ratio: 0.6
   minute_hand_length_ratio: 0.8
   second_hand_length_ratio: 0.9
-  overlay_opacity: 75  # 0-255, used for clock face overlay and seconds hand
-  hour_hand_width: [24, 6]  # [base_width, tip_width]
-  minute_hand_width: [16, 4]
-  second_hand_width: [4, 1]
+  overlay_opacity: 75
+  hour_hand_width:
+  - 24
+  - 6
+  minute_hand_width:
+  - 16
+  - 4
+  second_hand_width:
+  - 4
+  - 1
   marker_width: 3
-  use_numbers: true  # If true, displays hour numbers instead of markers
-  font_size: 36  # Font size for hour numbers
-  render_on_screen: true  # If true, renders circle and markers on screen with transparency. If false, sends them to API.
-
-# Animation settings
+  use_numbers: true
+  font_size: 36
+  render_on_screen: false
 animation:
-  transition_duration: 3.0  # seconds
-  background_update_interval: 15  # seconds
+  transition_duration: 3.0
+  background_update_interval: 15
   morph_flow_params:
     pyr_scale: 0.5
     levels: 3
@@ -40,18 +46,20 @@ animation:
     poly_n: 5
     poly_sigma: 1.2
     flags: 0
-
-# Image enhancement settings
 enhancement:
   bilateral_filter:
     d: 9
     sigma_color: 75
     sigma_space: 75
   unsharp_mask:
-    blur_size: [0, 0]  # Gaussian kernel size
+    blur_size:
+    - 0
+    - 0
     sigma: 3.0
     amount: 1.5
     threshold: -0.5
   clahe:
     clip_limit: 2.0
-    tile_grid_size: [8, 8] 
+    tile_grid_size:
+    - 8
+    - 8

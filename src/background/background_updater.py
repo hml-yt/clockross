@@ -49,11 +49,16 @@ class BackgroundUpdater:
         with open('api_payload.json', 'r') as f:
             payload = json.load(f)
         
+        # Override dynamic values
         payload["prompt"] = self.prompt_generator.generate()
         payload["alwayson_scripts"]["controlnet"]["args"][0]["image"] = clock_image_base64
         
+        # Override checkpoint
+        payload["override_settings"]["sd_model_checkpoint"] = self.config.api['checkpoint']
+        
         if self.debug:
             print("\nSending request to Stable Diffusion API...")
+            print(f"Using checkpoint: {self.config.api['checkpoint']}")
         try:
             response = requests.post(self.api_url, json=payload, timeout=30)
             if response.status_code == 200:
