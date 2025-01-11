@@ -13,12 +13,16 @@ class BackgroundUpdater:
     def __init__(self, api_url, debug=False):
         self.api_url = api_url
         self.debug = debug
-        self.background = None
+        self.current_background = None
+        self.previous_background = None
+        self.current_color = (255, 255, 255, 75)  # Default color
+        self.previous_color = None
+        self.transition_start = 0
+        self.transition_duration = 1.0  # seconds
         self.lock = threading.Lock()
         self.last_attempt = 0
         self.is_updating = False
         self.update_thread = None
-        self.dominant_color = (255, 255, 255, 75)  # Default color
         self.prompt_generator = PromptGenerator()
     
     def _extract_dominant_color(self, pil_image):
@@ -70,25 +74,52 @@ class BackgroundUpdater:
             new_bg = self._get_background_image(clock_image_base64)
             if new_bg:
                 with self.lock:
-                    self.background = new_bg
-                    self.dominant_color = self._extract_dominant_color(new_bg)
+                    # Store the current background and color as previous for transition
+                    if self.current_background:
+                        self.previous_background = self.current_background
+                        self.previous_color = self.current_color
+                    self.current_background = new_bg
+                    self.current_color = self._extract_dominant_color(new_bg)
+                    self.transition_start = time.time()
                     if self.debug:
                         print(f"Background updated at {datetime.now().strftime('%H:%M:%S')}")
-                        print(f"New brightest color: RGB{self.dominant_color[:3]} (15% opacity)")
+                        print(f"New brightest color: RGB{self.current_color[:3]} (15% opacity)")
         finally:
             with self.lock:
                 self.is_updating = False
                 self.update_thread = None
     
+    def _interpolate_color(self, color1, color2, progress):
+        """Interpolate between two colors"""
+        if not color1 or not color2:
+            return color2 or color1
+        return tuple(
+            int(c1 + (c2 - c1) * progress)
+            for c1, c2 in zip(color1, color2)
+        )
+    
     def get_background(self):
-        """Get the current background image"""
+        """Get the current background image and transition state"""
         with self.lock:
-            return self.background
+            if not self.current_background:
+                return None, 1.0
+            
+            # Calculate transition progress
+            progress = min(1.0, (time.time() - self.transition_start) / self.transition_duration)
+            
+            return (self.current_background, self.previous_background, progress)
     
     def get_dominant_color(self):
-        """Get the current dominant color"""
+        """Get the current dominant color with transition"""
         with self.lock:
-            return self.dominant_color
+            if not self.previous_color:
+                return self.current_color
+            
+            # Calculate transition progress
+            progress = min(1.0, (time.time() - self.transition_start) / self.transition_duration)
+            
+            # Interpolate between previous and current color
+            return self._interpolate_color(self.previous_color, self.current_color, progress)
     
     def update_background(self, clock_image_base64):
         """Start a background update if conditions are met"""
