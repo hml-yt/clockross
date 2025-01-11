@@ -29,7 +29,7 @@ BACKGROUND_COLOR = (0, 0, 0)  # Pure black
 # Colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
-GRAY = (50, 50, 50)  # Medium gray for API background
+GRAY = (25, 25, 25)  # Dark gray for API background
 TRANSPARENT_WHITE = (255, 255, 255, 75)  # Semi-transparent white
 
 # Set up display
@@ -103,7 +103,7 @@ def draw_tapered_line(surface, color, start_pos, end_pos, start_width, end_width
 
 def draw_clock_hands(hours, minutes):
     """Draw clock hands for API only"""
-    api_surface.fill((0, 0, 0))  # Fill with black background
+    api_surface.fill(GRAY)  # Fill with gray background
     
     # Draw clock circle
     pygame.draw.circle(api_surface, WHITE, CENTER, CLOCK_RADIUS, 3)
