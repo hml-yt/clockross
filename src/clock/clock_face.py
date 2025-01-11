@@ -11,9 +11,24 @@ class ClockFace:
         self.center = (width // 2, height // 2)
         self.clock_radius = min(width, height) // 2 - self.config.clock['radius_margin']
         self.marker_length = self.config.clock['marker_length']
-        self.hour_hand_length = self.clock_radius * self.config.clock['hour_hand_length_ratio']
-        self.minute_hand_length = self.clock_radius * self.config.clock['minute_hand_length_ratio']
-        self.second_hand_length = self.clock_radius * self.config.clock['second_hand_length_ratio']
+        
+        # Define hand length ratios for both modes (with and without numbers)
+        reduction = 1.0 - self.config.clock['numbered_hand_reduction']
+        self.hand_ratios = {
+            'with_numbers': {
+                'hour': self.config.clock['hour_hand_length_ratio'] * reduction,
+                'minute': self.config.clock['minute_hand_length_ratio'] * reduction,
+                'second': self.config.clock['second_hand_length_ratio'] * reduction
+            },
+            'without_numbers': {
+                'hour': self.config.clock['hour_hand_length_ratio'],
+                'minute': self.config.clock['minute_hand_length_ratio'],
+                'second': self.config.clock['second_hand_length_ratio']
+            }
+        }
+        
+        # Set initial hand lengths
+        self._update_hand_lengths()
         
         # Colors
         self.white = (255, 255, 255)
@@ -27,6 +42,13 @@ class ClockFace:
         
         # Initialize font for numbers
         self.font = pygame.font.Font(None, self.config.clock['font_size'])
+
+    def _update_hand_lengths(self):
+        """Update hand lengths based on whether numbers are being used"""
+        ratios = self.hand_ratios['with_numbers' if self.config.clock['use_numbers'] else 'without_numbers']
+        self.hour_hand_length = self.clock_radius * ratios['hour']
+        self.minute_hand_length = self.clock_radius * ratios['minute']
+        self.second_hand_length = self.clock_radius * ratios['second']
 
     def draw_tapered_line(self, surface, color, start_pos, end_pos, start_width, end_width):
         """Draw a line that is wider at the start and narrower at the end"""
@@ -105,6 +127,9 @@ class ClockFace:
 
     def draw_clock_hands(self, hours, minutes):
         """Draw the hour and minute hands on both surfaces"""
+        # Update hand lengths based on current settings
+        self._update_hand_lengths()
+        
         # Clear the surfaces
         self.api_surface.fill((0, 0, 0, 0))
         self.overlay_surface.fill((0, 0, 0, 0))

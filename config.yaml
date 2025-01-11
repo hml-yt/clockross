@@ -18,16 +18,17 @@ api:
 clock:
   radius_margin: 20
   marker_length: 30
-  hour_hand_length_ratio: 0.6
+  hour_hand_length_ratio: 0.7
   minute_hand_length_ratio: 0.8
   second_hand_length_ratio: 0.9
+  numbered_hand_reduction: 0.2
   overlay_opacity: 75
   hour_hand_width:
   - 24
-  - 6
+  - 1
   minute_hand_width:
   - 16
-  - 4
+  - 1
   second_hand_width:
   - 4
   - 1

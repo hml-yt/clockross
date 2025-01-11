@@ -102,6 +102,9 @@ class SettingsUI:
                 setting['value'] = not setting['value']
                 # Update config
                 self.config.update(setting['key'][0], setting['key'][1], setting['value'])
+                # Force background update if it was the use_numbers setting
+                if setting['key'][1] == 'use_numbers' and self.background_updater:
+                    self.background_updater.last_attempt = 0  # Force update
             elif setting['type'] == 'color':
                 # Cycle through some preset colors
                 presets = [(25, 25, 25), (40, 40, 40), (75, 75, 75)]
