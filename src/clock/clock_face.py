@@ -1,23 +1,25 @@
 import pygame
 import math
 from datetime import datetime
+from ..config import Config
 
 class ClockFace:
     def __init__(self, width, height):
+        self.config = Config()
         self.width = width
         self.height = height
         self.center = (width // 2, height // 2)
-        self.clock_radius = min(width, height) // 2 - 20
-        self.marker_length = 30
-        self.hour_hand_length = self.clock_radius * 0.6
-        self.minute_hand_length = self.clock_radius * 0.8
-        self.second_hand_length = self.clock_radius * 0.9
+        self.clock_radius = min(width, height) // 2 - self.config.clock['radius_margin']
+        self.marker_length = self.config.clock['marker_length']
+        self.hour_hand_length = self.clock_radius * self.config.clock['hour_hand_length_ratio']
+        self.minute_hand_length = self.clock_radius * self.config.clock['minute_hand_length_ratio']
+        self.second_hand_length = self.clock_radius * self.config.clock['second_hand_length_ratio']
         
         # Colors
         self.white = (255, 255, 255)
         self.black = (0, 0, 0)
-        self.gray = (25, 25, 25)
-        self.transparent_white = (255, 255, 255, 75)
+        self.gray = tuple(self.config.api['background_color'])
+        self.transparent_white = (255, 255, 255, self.config.clock['overlay_opacity'])
         
         # Create surfaces
         self.api_surface = pygame.Surface((width, height), pygame.SRCALPHA)
@@ -55,8 +57,25 @@ class ClockFace:
         """Draw clock hands for API only"""
         self.api_surface.fill(self.gray)
         
-        # Draw clock circle
-        pygame.draw.circle(self.api_surface, self.white, self.center, self.clock_radius, 3)
+        # Draw clock circle and markers to API if not rendering on screen
+        if not self.config.clock['render_on_screen']:
+            # Draw clock circle
+            pygame.draw.circle(self.api_surface, self.white, self.center, self.clock_radius, 
+                             self.config.clock['marker_width'])
+            
+            # Draw hour markers
+            for hour in range(12):
+                angle = math.radians(hour * 360 / 12 - 90)
+                start_pos = (
+                    self.center[0] + (self.clock_radius - self.marker_length) * math.cos(angle),
+                    self.center[1] + (self.clock_radius - self.marker_length) * math.sin(angle)
+                )
+                end_pos = (
+                    self.center[0] + self.clock_radius * math.cos(angle),
+                    self.center[1] + self.clock_radius * math.sin(angle)
+                )
+                pygame.draw.line(self.api_surface, self.white, start_pos, end_pos, 
+                               self.config.clock['marker_width'])
         
         # Hour hand
         hour_angle = math.radians((hours % 12 + minutes / 60) * 360 / 12 - 90)
@@ -64,7 +83,8 @@ class ClockFace:
             self.center[0] + self.hour_hand_length * math.cos(hour_angle),
             self.center[1] + self.hour_hand_length * math.sin(hour_angle)
         )
-        self.draw_tapered_line(self.api_surface, self.white, self.center, hour_end, 24, 6)
+        hw = self.config.clock['hour_hand_width']
+        self.draw_tapered_line(self.api_surface, self.white, self.center, hour_end, hw[0], hw[1])
         
         # Minute hand
         minute_angle = math.radians(minutes * 360 / 60 - 90)
@@ -72,20 +92,8 @@ class ClockFace:
             self.center[0] + self.minute_hand_length * math.cos(minute_angle),
             self.center[1] + self.minute_hand_length * math.sin(minute_angle)
         )
-        self.draw_tapered_line(self.api_surface, self.white, self.center, minute_end, 16, 4)
-        
-        # Draw hour markers
-        for hour in range(12):
-            angle = math.radians(hour * 360 / 12 - 90)
-            start_pos = (
-                self.center[0] + (self.clock_radius - self.marker_length) * math.cos(angle),
-                self.center[1] + (self.clock_radius - self.marker_length) * math.sin(angle)
-            )
-            end_pos = (
-                self.center[0] + self.clock_radius * math.cos(angle),
-                self.center[1] + self.clock_radius * math.sin(angle)
-            )
-            pygame.draw.line(self.api_surface, self.white, start_pos, end_pos, 3)
+        mw = self.config.clock['minute_hand_width']
+        self.draw_tapered_line(self.api_surface, self.white, self.center, minute_end, mw[0], mw[1])
         
         # Draw center dot
         pygame.draw.circle(self.api_surface, self.white, self.center, 10)
@@ -94,21 +102,25 @@ class ClockFace:
 
     def draw_clock_overlay(self, surface):
         """Draw clock face overlay with hour markers and outer circle"""
-        # Draw outer circle
-        pygame.draw.circle(surface, self.transparent_white, self.center, self.clock_radius, 3)
-        
-        # Draw hour markers
-        for hour in range(12):
-            angle = math.radians(hour * 360 / 12 - 90)
-            start_pos = (
-                self.center[0] + (self.clock_radius - self.marker_length) * math.cos(angle),
-                self.center[1] + (self.clock_radius - self.marker_length) * math.sin(angle)
-            )
-            end_pos = (
-                self.center[0] + self.clock_radius * math.cos(angle),
-                self.center[1] + self.clock_radius * math.sin(angle)
-            )
-            pygame.draw.line(surface, self.transparent_white, start_pos, end_pos, 3)
+        # Draw outer circle and markers on screen if configured
+        if self.config.clock['render_on_screen']:
+            # Draw outer circle
+            pygame.draw.circle(surface, self.transparent_white, self.center, self.clock_radius, 
+                             self.config.clock['marker_width'])
+            
+            # Draw hour markers
+            for hour in range(12):
+                angle = math.radians(hour * 360 / 12 - 90)
+                start_pos = (
+                    self.center[0] + (self.clock_radius - self.marker_length) * math.cos(angle),
+                    self.center[1] + (self.clock_radius - self.marker_length) * math.sin(angle)
+                )
+                end_pos = (
+                    self.center[0] + self.clock_radius * math.cos(angle),
+                    self.center[1] + self.clock_radius * math.sin(angle)
+                )
+                pygame.draw.line(surface, self.transparent_white, start_pos, end_pos, 
+                               self.config.clock['marker_width'])
 
     def draw_seconds_hand(self, surface, seconds, color):
         """Draw the seconds hand with the given color"""
@@ -117,4 +129,5 @@ class ClockFace:
             self.center[0] + self.second_hand_length * math.cos(seconds_angle),
             self.center[1] + self.second_hand_length * math.sin(seconds_angle)
         )
-        self.draw_tapered_line(surface, color, self.center, seconds_end, 4, 1) 
+        sw = self.config.clock['second_hand_width']
+        self.draw_tapered_line(surface, color, self.center, seconds_end, sw[0], sw[1]) 

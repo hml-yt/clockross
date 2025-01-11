@@ -130,22 +130,17 @@ def main():
                 )
                 screen.blit(current_surface, (0, 0))
         else:
-            # Only draw clock overlay when there's no background
-            # Clear overlay surface
-            display_clock_face.overlay_surface.fill((0, 0, 0, 0))
-            
-            # Draw clock face overlay at display resolution
-            display_clock_face.draw_clock_overlay(display_clock_face.overlay_surface)
-            
             if not first_background_received:
                 # Show clock hands until first background is received
                 # Scale the hands surface to display resolution
                 scaled_hands = pygame.transform.smoothscale(hands_surface, (display_width, display_height))
                 screen.blit(scaled_hands, (0, 0))
         
-        # Always draw the seconds hand
-        # Clear seconds hand surface
+        # Clear overlay surface
         display_clock_face.overlay_surface.fill((0, 0, 0, 0))
+        
+        # Draw clock overlay (circle and markers) if configured
+        display_clock_face.draw_clock_overlay(display_clock_face.overlay_surface)
         
         # Draw seconds hand on overlay with dominant color
         display_clock_face.draw_seconds_hand(
