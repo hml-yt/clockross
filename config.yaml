@@ -14,6 +14,8 @@ api:
   - 75
   - 75
   - 75
+  # Random darkness variation range (0 to 1, where 0.2 means ±20% variation)
+  background_darkness_variation: 0.2
   checkpoint: revAnimated_v2Pruned_393004
 clock:
   radius_margin: 20

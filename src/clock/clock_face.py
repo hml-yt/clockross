@@ -1,5 +1,6 @@
 import pygame
 import math
+import random
 from datetime import datetime
 from ..config import Config
 
@@ -33,7 +34,6 @@ class ClockFace:
         # Colors
         self.white = (255, 255, 255)
         self.black = (0, 0, 0)
-        self.gray = tuple(self.config.api['background_color'])
         self.transparent_white = (255, 255, 255, self.config.clock['overlay_opacity'])
         
         # Create surfaces
@@ -42,6 +42,21 @@ class ClockFace:
         
         # Initialize font for numbers
         self.font = pygame.font.Font(None, self.config.clock['font_size'])
+        
+        # Update background color with random variation
+        self._update_background_color()
+
+    def _update_background_color(self):
+        """Update background color with random darkness variation"""
+        base_color = self.config.api['background_color'][0]  # All components are the same
+        variation = self.config.api['background_darkness_variation']
+        
+        # Generate random factor between (1 - variation) and (1 + variation)
+        factor = 1.0 + random.uniform(-variation, variation)
+        
+        # Apply factor to base color, ensuring it stays within 0-255
+        varied_color = max(0, min(255, int(base_color * factor)))
+        self.gray = (varied_color, varied_color, varied_color)
 
     def _update_hand_lengths(self):
         """Update hand lengths based on whether numbers are being used"""
@@ -130,12 +145,14 @@ class ClockFace:
         # Update hand lengths based on current settings
         self._update_hand_lengths()
         
+        # Update background color with new random variation
+        self._update_background_color()
+        
         # Clear the surfaces
         self.api_surface.fill((0, 0, 0, 0))
         self.overlay_surface.fill((0, 0, 0, 0))
         
-        # Fill API surface with background color from current config
-        self.gray = tuple(self.config.api['background_color'])
+        # Fill API surface with background color
         self.api_surface.fill((*self.gray, 255))
         
         # Draw hour markers
