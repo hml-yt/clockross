@@ -29,7 +29,6 @@ class Config:
             # Initialize dynamic settings with values from base config
             self._dynamic = {
                 'clock': {
-                    'render_on_screen': self._config['clock']['render_on_screen'],
                     'use_numbers': self._config['clock']['use_numbers']
                 },
                 'api': {
@@ -57,6 +56,13 @@ class Config:
     
     def update(self, section, key, value):
         """Update a configuration value and save to appropriate file"""
+        # Always save display_mode to dynamic settings
+        if section == 'clock' and key == 'display_mode':
+            if 'clock' not in self._dynamic:
+                self._dynamic['clock'] = {}
+            self._dynamic['clock']['display_mode'] = value
+            self.save_dynamic()
+            return True
         # Check if this is a dynamic setting
         if section in self._dynamic and key in self._dynamic[section]:
             self._dynamic[section][key] = value
@@ -105,6 +111,7 @@ class Config:
     def clock(self):
         # Merge base and dynamic clock settings
         base_clock = self._config['clock'].copy()
+        # Get display_mode from dynamic settings if it exists, otherwise use default from base config
         if 'clock' in self._dynamic:
             base_clock.update(self._dynamic['clock'])
         return base_clock

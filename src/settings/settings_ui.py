@@ -14,10 +14,11 @@ class SettingsUI:
         self.checkpoint_changed = False
         self.settings = [
             {
-                'name': 'Render on Screen',
-                'key': ('clock', 'render_on_screen'),
-                'type': 'bool',
-                'value': self.config.clock['render_on_screen']
+                'name': 'Display Mode',
+                'key': ('clock', 'display_mode'),
+                'type': 'select',
+                'value': self.config.clock['display_mode'],
+                'options': ['screen_only', 'render_only', 'both']
             },
             {
                 'name': 'Use Numbers',

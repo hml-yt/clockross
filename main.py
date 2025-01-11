@@ -105,7 +105,7 @@ def main():
             hands_surface = api_clock_face.draw_clock_hands(hours, minutes)
             hands_base64 = surface_to_base64(hands_surface, debug=debug)
             background_updater.update_background(hands_base64)
-        
+            
         # Clear screen with pure black
         screen.fill(BACKGROUND_COLOR)
         

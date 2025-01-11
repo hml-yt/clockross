@@ -14,7 +14,6 @@ api:
   - 75
   - 75
   - 75
-  # Random darkness variation range (0 to 1, where 0.2 means ±20% variation)
   background_darkness_variation: 0.2
   checkpoint: revAnimated_v2Pruned_393004
 clock:
@@ -37,7 +36,7 @@ clock:
   marker_width: 3
   use_numbers: true
   font_size: 36
-  render_on_screen: false
+  display_mode: render_only
 animation:
   transition_duration: 3.0
   background_update_interval: 15

@@ -155,13 +155,14 @@ class ClockFace:
         # Fill API surface with background color
         self.api_surface.fill((*self.gray, 255))
         
-        # Draw hour markers
-        for hour in range(12):
-            if not self.config.clock['render_on_screen']:
+        # Draw hour markers based on display mode
+        display_mode = self.config.clock['display_mode']
+        if display_mode in ['render_only', 'both']:
+            # Draw markers on API surface
+            for hour in range(12):
                 self.draw_hour_marker(self.api_surface, hour, self.white)
-            if self.config.clock['render_on_screen']:
-                self.draw_hour_marker(self.overlay_surface, hour, self.transparent_white, True)
         
+        # Always draw hands on API surface for background generation
         # Hour hand
         hour_angle = math.radians((hours % 12 + minutes / 60) * 360 / 12 - 90)
         hour_end = (
@@ -187,8 +188,9 @@ class ClockFace:
 
     def draw_clock_overlay(self, surface):
         """Draw clock face overlay with hour markers and outer circle"""
-        # Draw outer circle and markers on screen if configured
-        if self.config.clock['render_on_screen']:
+        # Draw outer circle and markers on screen based on display mode
+        display_mode = self.config.clock['display_mode']
+        if display_mode in ['screen_only', 'both']:
             # Draw outer circle
             pygame.draw.circle(surface, self.transparent_white, self.center, self.clock_radius, 
                              self.config.clock['marker_width'])
