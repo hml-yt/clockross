@@ -25,8 +25,8 @@ BACKGROUND_COLOR = (0, 0, 0)  # Pure black
 # Colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
-RED = (255, 0, 0)
-OVERLAY_COLOR = (0, 0, 0, 153)  # 40% transparent black (0.4 * 255 = 102)
+GRAY = (50, 50, 50)  # Medium gray for API background
+TRANSPARENT_WHITE = (255, 255, 255, 75)  # Semi-transparent white
 
 # Set up display
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -34,7 +34,7 @@ pygame.display.set_caption("Analog Clock with AI Background")
 
 # Create surfaces for drawing
 api_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)  # For sending to API
-overlay_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)  # For display overlay
+overlay_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)  # For clock overlay
 
 def generate_random_prompt():
     settings = [
@@ -99,8 +99,10 @@ def draw_tapered_line(surface, color, start_pos, end_pos, start_width, end_width
 
 def draw_clock_hands(hours, minutes):
     """Draw clock hands for API only"""
-    api_surface.fill((0, 0, 0, 0))  # Clear with transparent
-    overlay_surface.fill(OVERLAY_COLOR)  # Fill with semi-transparent black
+    api_surface.fill((0, 0, 0))  # Fill with black background
+    
+    # Draw clock circle
+    pygame.draw.circle(api_surface, WHITE, CENTER, CLOCK_RADIUS, 2)
     
     # Hour hand
     hour_angle = math.radians((hours % 12 + minutes / 60) * 360 / 12 - 90)
@@ -119,6 +121,22 @@ def draw_clock_hands(hours, minutes):
         CENTER[1] + minute_length * math.sin(minute_angle)
     )
     draw_tapered_line(api_surface, WHITE, CENTER, minute_end, 12, 2)
+    
+    # Draw hour markers
+    for hour in range(12):
+        angle = math.radians(hour * 360 / 12 - 90)
+        start_pos = (
+            CENTER[0] + (CLOCK_RADIUS - 20) * math.cos(angle),
+            CENTER[1] + (CLOCK_RADIUS - 20) * math.sin(angle)
+        )
+        end_pos = (
+            CENTER[0] + CLOCK_RADIUS * math.cos(angle),
+            CENTER[1] + CLOCK_RADIUS * math.sin(angle)
+        )
+        pygame.draw.line(api_surface, WHITE, start_pos, end_pos, 2)
+    
+    # Draw center dot
+    pygame.draw.circle(api_surface, WHITE, CENTER, 8)
     
     save_debug_image(api_surface, "clockface")
     
@@ -152,12 +170,7 @@ def surface_to_base64(surface):
     buffered = BytesIO()
     rgb_image.save(buffered, format="PNG")
     img_str = base64.b64encode(buffered.getvalue()).decode()
-    
-    # Print the first and last few characters of base64 string
-    print(f"Base64 string length: {len(img_str)}")
-    print(f"Base64 string starts with: {img_str[:50]}...")
-    print(f"Base64 string ends with: ...{img_str[-50:]}")
-    
+        
     return img_str
 
 def get_background_image(clock_image_base64):
@@ -248,6 +261,24 @@ def save_debug_image(image, prefix):
     
     print(f"Saved {prefix} to {debug_filename}")
 
+def draw_clock_overlay(surface):
+    """Draw clock face overlay with hour markers and outer circle"""
+    # Draw outer circle
+    pygame.draw.circle(surface, TRANSPARENT_WHITE, CENTER, CLOCK_RADIUS, 2)
+    
+    # Draw hour markers
+    for hour in range(12):
+        angle = math.radians(hour * 360 / 12 - 90)
+        start_pos = (
+            CENTER[0] + (CLOCK_RADIUS - 20) * math.cos(angle),
+            CENTER[1] + (CLOCK_RADIUS - 20) * math.sin(angle)
+        )
+        end_pos = (
+            CENTER[0] + CLOCK_RADIUS * math.cos(angle),
+            CENTER[1] + CLOCK_RADIUS * math.sin(angle)
+        )
+        pygame.draw.line(surface, TRANSPARENT_WHITE, start_pos, end_pos, 2)
+
 def main():
     print("Starting clock application...")
     print(f"Will refresh background every 15 seconds")
@@ -255,6 +286,7 @@ def main():
     
     clock = pygame.time.Clock()
     running = True
+    first_background_received = False
     
     # Force initial update
     now = datetime.now()
@@ -283,23 +315,33 @@ def main():
         # Draw background if available
         background = background_updater.get_background()
         if background:
+            first_background_received = True
             mode = background.mode
             size = background.size
             data = background.tobytes()
             bg_surface = pygame.image.fromstring(data, size, mode)
             screen.blit(bg_surface, (0, 0))
+        elif not first_background_received:
+            # Show clock hands until first background is received
+            screen.blit(hands_surface, (0, 0))
         
-        # Draw semi-transparent black overlay
-        screen.blit(overlay_surface, (0, 0))
+        # Clear overlay surface
+        overlay_surface.fill((0, 0, 0, 0))
         
-        # Draw seconds hand
+        # Draw clock face overlay
+        draw_clock_overlay(overlay_surface)
+        
+        # Draw seconds hand on overlay
         seconds_angle = math.radians(seconds * 360 / 60 - 90)
         seconds_length = CLOCK_RADIUS * 0.8
         seconds_end = (
             CENTER[0] + seconds_length * math.cos(seconds_angle),
             CENTER[1] + seconds_length * math.sin(seconds_angle)
         )
-        pygame.draw.line(screen, RED, CENTER, seconds_end, 2)
+        draw_tapered_line(overlay_surface, TRANSPARENT_WHITE, CENTER, seconds_end, 4, 1)
+        
+        # Draw overlay
+        screen.blit(overlay_surface, (0, 0))
         
         pygame.display.flip()
         clock.tick(30)

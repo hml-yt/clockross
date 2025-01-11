@@ -4,6 +4,7 @@ Write a clock app in Python that uses Pygame to display an analog clock.
 The clock hands shouldn't be shown on the screen, but only sent as base64 encoded images to the API.
 It will render a gray background and white hour and minute hands, send them to a Stable Diffusion API in a separate thread to generate a background image.
 The hands should be wide at the base and narrow at the tip.
+If there's no background image yet, show the clockhands on the screen.
 
 # Stable Diffusion API
 The Stable Diffusion API is at http://orinputer.local:7860/sdapi/v1/txt2img.
@@ -14,7 +15,7 @@ The random prompt should similar to the prompts in prompts.txt.
 
 # Seconds Hand
 It will then draw the seconds hand on the screen overlayed on the background image. 
-The app's background should be black. The clock should be 40% transparent.
+The app's background should be black. The seconds hand and overlay should be 40% transparent.
 It will refresh the background image in the background every 15 seconds.
 
 # Overlay
