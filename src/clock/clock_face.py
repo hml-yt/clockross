@@ -24,6 +24,9 @@ class ClockFace:
         # Create surfaces
         self.api_surface = pygame.Surface((width, height), pygame.SRCALPHA)
         self.overlay_surface = pygame.Surface((width, height), pygame.SRCALPHA)
+        
+        # Initialize font for numbers
+        self.font = pygame.font.Font(None, self.config.clock['font_size'])
 
     def draw_tapered_line(self, surface, color, start_pos, end_pos, start_width, end_width):
         """Draw a line that is wider at the start and narrower at the end"""
@@ -53,6 +56,49 @@ class ClockFace:
         
         pygame.draw.polygon(surface, color, points)
 
+    def draw_hour_marker(self, surface, hour, color, is_overlay=False):
+        """Draw either a line marker or number for the given hour position"""
+        angle = math.radians(hour * 360 / 12 - 90)
+        
+        if self.config.clock['use_numbers']:
+            # Calculate position for number
+            number_radius = self.clock_radius - self.marker_length - 10
+            pos = (
+                self.center[0] + number_radius * math.cos(angle),
+                self.center[1] + number_radius * math.sin(angle)
+            )
+            # Convert 0 to 12
+            hour_num = 12 if hour == 0 else hour
+            
+            # Create a temporary surface for the text with alpha channel
+            if is_overlay:
+                text = self.font.render(str(hour_num), True, (255, 255, 255))
+                # Create a surface with per-pixel alpha
+                alpha_surface = pygame.Surface(text.get_size(), pygame.SRCALPHA)
+                # Fill with transparent color using the overlay opacity
+                alpha_surface.fill((255, 255, 255, self.config.clock['overlay_opacity']))
+                # Blit using the text as a mask
+                alpha_surface.blit(text, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
+                text = alpha_surface
+            else:
+                text = self.font.render(str(hour_num), True, color)
+            
+            # Center the text at the calculated position
+            text_rect = text.get_rect(center=pos)
+            surface.blit(text, text_rect)
+        else:
+            # Draw traditional marker line
+            start_pos = (
+                self.center[0] + (self.clock_radius - self.marker_length) * math.cos(angle),
+                self.center[1] + (self.clock_radius - self.marker_length) * math.sin(angle)
+            )
+            end_pos = (
+                self.center[0] + self.clock_radius * math.cos(angle),
+                self.center[1] + self.clock_radius * math.sin(angle)
+            )
+            pygame.draw.line(surface, color, start_pos, end_pos, 
+                           self.config.clock['marker_width'])
+
     def draw_clock_hands(self, hours, minutes):
         """Draw clock hands for API only"""
         self.api_surface.fill(self.gray)
@@ -63,19 +109,9 @@ class ClockFace:
             pygame.draw.circle(self.api_surface, self.white, self.center, self.clock_radius, 
                              self.config.clock['marker_width'])
             
-            # Draw hour markers
+            # Draw hour markers or numbers
             for hour in range(12):
-                angle = math.radians(hour * 360 / 12 - 90)
-                start_pos = (
-                    self.center[0] + (self.clock_radius - self.marker_length) * math.cos(angle),
-                    self.center[1] + (self.clock_radius - self.marker_length) * math.sin(angle)
-                )
-                end_pos = (
-                    self.center[0] + self.clock_radius * math.cos(angle),
-                    self.center[1] + self.clock_radius * math.sin(angle)
-                )
-                pygame.draw.line(self.api_surface, self.white, start_pos, end_pos, 
-                               self.config.clock['marker_width'])
+                self.draw_hour_marker(self.api_surface, hour, self.white)
         
         # Hour hand
         hour_angle = math.radians((hours % 12 + minutes / 60) * 360 / 12 - 90)
@@ -108,19 +144,9 @@ class ClockFace:
             pygame.draw.circle(surface, self.transparent_white, self.center, self.clock_radius, 
                              self.config.clock['marker_width'])
             
-            # Draw hour markers
+            # Draw hour markers or numbers
             for hour in range(12):
-                angle = math.radians(hour * 360 / 12 - 90)
-                start_pos = (
-                    self.center[0] + (self.clock_radius - self.marker_length) * math.cos(angle),
-                    self.center[1] + (self.clock_radius - self.marker_length) * math.sin(angle)
-                )
-                end_pos = (
-                    self.center[0] + self.clock_radius * math.cos(angle),
-                    self.center[1] + self.clock_radius * math.sin(angle)
-                )
-                pygame.draw.line(surface, self.transparent_white, start_pos, end_pos, 
-                               self.config.clock['marker_width'])
+                self.draw_hour_marker(surface, hour, self.transparent_white, is_overlay=True)
 
     def draw_seconds_hand(self, surface, seconds, color):
         """Draw the seconds hand with the given color"""

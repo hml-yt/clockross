@@ -24,7 +24,9 @@ clock:
   minute_hand_width: [16, 4]
   second_hand_width: [4, 1]
   marker_width: 3
-  render_on_screen: false  # If true, renders circle and markers on screen with transparency. If false, sends them to API.
+  use_numbers: true  # If true, displays hour numbers instead of markers
+  font_size: 36  # Font size for hour numbers
+  render_on_screen: true  # If true, renders circle and markers on screen with transparency. If false, sends them to API.
 
 # Animation settings
 animation:
