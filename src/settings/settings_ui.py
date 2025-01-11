@@ -1,14 +1,17 @@
 import pygame
 import pygame.gfxdraw
+import random
 from ..config import Config
 
 class SettingsUI:
-    def __init__(self, screen_width, screen_height, background_updater=None):
+    def __init__(self, screen_width, screen_height, background_updater=None, clock_face=None):
         self.config = Config()
         self.screen_width = screen_width
         self.screen_height = screen_height
         self.visible = False
         self.background_updater = background_updater
+        self.clock_face = clock_face
+        self.checkpoint_changed = False
         self.settings = [
             {
                 'name': 'Render on Screen',
@@ -21,6 +24,19 @@ class SettingsUI:
                 'key': ('clock', 'use_numbers'),
                 'type': 'bool',
                 'value': self.config.clock['use_numbers']
+            },
+            {
+                'name': 'Font',
+                'key': ('clock', 'font'),
+                'type': 'select',
+                'value': self.config.clock['font'],
+                'options': [
+                    "Arial",
+                    "Helvetica",
+                    "Times New Roman",
+                    "Brush Script MT",
+                    "Random"
+                ]
             },
             {
                 'name': 'Background Color',
@@ -41,6 +57,9 @@ class SettingsUI:
                 ]
             }
         ]
+        
+        # Font options for random selection
+        self.font_options = ["Arial", "Helvetica", "Times New Roman", "Brush Script MT"]
         
         # UI settings
         self.padding = 20
@@ -65,6 +84,10 @@ class SettingsUI:
     
     def toggle(self):
         """Toggle settings visibility"""
+        if self.visible:  # If we're closing the panel
+            if self.checkpoint_changed and self.background_updater:
+                self.background_updater.last_attempt = 0  # Force update
+                self.checkpoint_changed = False
         self.visible = not self.visible
     
     def handle_click(self, pos):
@@ -75,6 +98,9 @@ class SettingsUI:
         # Check if click is inside panel
         if not (self.panel_x <= pos[0] <= self.panel_x + self.panel_width and
                 self.panel_y <= pos[1] <= self.panel_y + self.panel_height):
+            if self.checkpoint_changed and self.background_updater:
+                self.background_updater.last_attempt = 0  # Force update
+                self.checkpoint_changed = False
             self.visible = False
             return True
         
@@ -91,7 +117,7 @@ class SettingsUI:
                 self.config.update(setting['key'][0], setting['key'][1], setting['value'])
             elif setting['type'] == 'color':
                 # Cycle through some preset colors
-                presets = [(25, 25, 25), (40, 40, 40), (60, 60, 60)]
+                presets = [(25, 25, 25), (40, 40, 40), (75, 75, 75)]
                 current = tuple(setting['value'])
                 next_index = (presets.index(current) + 1) % len(presets) if current in presets else 0
                 setting['value'] = list(presets[next_index])
@@ -102,11 +128,22 @@ class SettingsUI:
                 current_index = setting['options'].index(setting['value'])
                 next_index = (current_index + 1) % len(setting['options'])
                 setting['value'] = setting['options'][next_index]
-                # Update config
-                self.config.update(setting['key'][0], setting['key'][1], setting['value'])
-                # Force background update when checkpoint changes
-                if self.background_updater and setting['key'][1] == 'checkpoint':
-                    self.background_updater.last_attempt = 0  # Reset the timer to force update
+                
+                # Handle random font selection
+                if setting['key'][1] == 'font':
+                    if setting['value'] == 'Random':
+                        random_font = random.choice(self.font_options)
+                        self.config.update(setting['key'][0], setting['key'][1], random_font)
+                    else:
+                        self.config.update(setting['key'][0], setting['key'][1], setting['value'])
+                    # Update the clock face font
+                    if self.clock_face:
+                        self.clock_face.update_font()
+                else:
+                    self.config.update(setting['key'][0], setting['key'][1], setting['value'])
+                    # Mark checkpoint as changed if it was the checkpoint setting
+                    if setting['key'][1] == 'checkpoint':
+                        self.checkpoint_changed = True
         
         return True
     

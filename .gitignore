@@ -21,3 +21,6 @@ __pycache__/
 # IDE settings
 .vscode/
 .idea/ 
+
+# Dynamic settings
+dynamic_settings.yaml 

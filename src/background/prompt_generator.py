@@ -1,90 +1,49 @@
 import random
 
+def generate_prompt():
+    # Define lists of options for each segment of the prompt
+    themes = [
+        "a tranquil Japanese zen garden", "a futuristic neon cityscape", "a surreal dreamscape",
+        "a vast desert", "an icy tundra", "a lush rainforest", "a magical underwater world",
+        "a bustling medieval marketplace", "a volcanic landscape", "a steampunk cityscape",
+        "an enchanted forest", "a celestial space scene", "a post-apocalyptic wasteland",
+        "a vibrant alien planet", "a mystical ancient forest", "a massive underground cavern",
+        "a sprawling futuristic space station", "an abandoned theme park", "a serene alpine lake",
+        "a dense fog-covered marshland", "a grand futuristic library", "a post-apocalyptic cityscape",
+        "a tropical rainforest", "a peaceful icy archipelago"
+    ]
+
+    descriptions = [
+        "at sunrise", "at sunset", "under the aurora borealis", "at twilight",
+        "during a thunderstorm", "under a golden sky", "with glowing bioluminescent plants",
+        "with cascading waterfalls", "with intricate carvings", "with overgrown ruins",
+        "with futuristic technology", "with shafts of sunlight piercing through",
+        "with vibrant coral reefs", "with swirling nebulae in the sky", "with ancient trees",
+        "with soft mist rolling through", "with dynamic lighting", "under a sky filled with stars",
+        "with glowing mushrooms", "with floating islands", "over a frozen ocean", "with towering shelves of glowing books"
+    ]
+
+    details = [
+        "ultra-detailed", "hyper-realistic", "cinematic HDR lighting", "dramatic atmosphere", 
+        "serene and peaceful", "eerie and haunting", "vibrant and colorful", "exotic and imaginative", 
+        "dark yet beautiful", "nostalgic yet eerie", "dynamic and vivid", "soft and tranquil", 
+        "high-tech and sleek", "lush and vibrant", "ancient and mysterious"
+    ]
+
+    resolutions = ["8k", "16k", "32k", "HDR"]
+
+    theme = random.choice(themes)
+    description = random.choice(descriptions)
+    selected_details = random.sample(details, k=random.randint(2, 4))  # Choose 2 to 4 details
+    selected_resolutions = random.sample(resolutions, k=random.randint(1, len(resolutions)))  # Choose 1 to all resolutions
+    return f"{theme}, {description}, {', '.join(selected_details)}, {', '.join(selected_resolutions)}, trending on ArtStation"
+
 class PromptGenerator:
     def __init__(self):
-        # Time and lighting
-        self.times = [
-            "at dawn", "at dusk", "under moonlight", "in twilight", "at midnight",
-            "during golden hour", "under a blood moon", "during solar eclipse",
-            "in perpetual twilight", "under starlight", "at sunrise", "at sunset"
-        ]
+        pass
         
-        # Environments and landscapes
-        self.environments = [
-            "in a crystalline cave", "in an ancient temple", "in a floating city",
-            "in a submerged cathedral", "in a cosmic void", "in a quantum realm",
-            "in a steampunk workshop", "in a celestial observatory",
-            "in a forgotten library", "in an enchanted forest", "in a desert oasis",
-            "in a volcanic sanctuary", "in an arctic cathedral", "in a cloud kingdom",
-            "in a bioluminescent grove", "in a crystal canyon", "in a meteor crater",
-            "in a temporal nexus", "in an astral plane", "in a dimensional rift"
-        ]
-        
-        # Main subjects and focal points
-        self.main_elements = [
-            "a grand clockwork mechanism", "an ancient timekeeper's sanctuary",
-            "a cosmic observatory", "a temporal dimension", "a time-bending realm",
-            "a celestial chronometer", "an ethereal timescape", "a time wizard's study",
-            "a chronograph temple", "a temporal engine", "a reality-warping device",
-            "an interdimensional timepiece", "a cosmic time portal", "a quantum clock tower",
-            "an astrolabe sanctuary", "a temporal compass", "a time crystal formation",
-            "a mechanical constellation", "a dimensional sundial", "an ethereal hourglass"
-        ]
-        
-        # Atmospheric elements and details
-        self.details = [
-            "intricate gears floating in space", "swirling time spirals",
-            "floating numerical constellations", "temporal energy streams",
-            "crystalline chronographs", "orbiting time fragments",
-            "cascading light particles", "flowing time rivers", "dancing auroras",
-            "geometric light patterns", "holographic time glyphs", "levitating crystals",
-            "temporal storm clouds", "quantum dust motes", "prismatic refractions",
-            "nebulous time streams", "fractal patterns", "cosmic clockwork",
-            "temporal butterflies", "chronometric fractals", "time-worn artifacts",
-            "ethereal wisps", "dimensional echoes", "crystalline formations",
-            "ancient runes", "floating mathematical equations", "astral projections"
-        ]
-        
-        # Mood and atmosphere
-        self.atmospheres = [
-            "serene and mysterious", "enigmatic and profound",
-            "timeless and ethereal", "cosmic and surreal",
-            "mystical and ancient", "otherworldly and transcendent",
-            "dreamlike and floating", "metaphysical and abstract",
-            "sacred and divine", "infinite and vast", "peaceful and harmonious",
-            "magical and enchanted", "celestial and cosmic", "ethereal and ghostly"
-        ]
-        
-        # Technical qualities
-        self.qualities = [
-            "ultra-detailed", "hyper-realistic", "HDR", "8k", "32k",
-            "cinematic lighting", "dramatic atmosphere", "volumetric lighting",
-            "ray tracing", "photorealistic", "studio quality", "professional photography",
-            "octane render", "unreal engine", "dynamic range", "atmospheric perspective"
-        ]
-        
-        # Story elements
-        self.stories = [
-            "where time stands still", "where past meets future",
-            "where reality bends", "where dimensions converge",
-            "where time flows backwards", "where eternity unfolds",
-            "where moments crystallize", "where infinity loops",
-            "where chronology fractures", "where time spirals endlessly"
-        ]
-
     def generate(self):
         """Generate a random prompt for the Stable Diffusion API"""
-        prompt_structures = [
-            # Structure 1: Environment-focused
-            f"A {random.choice(self.environments)} {random.choice(self.times)}, featuring {random.choice(self.main_elements)}, {random.choice(self.details)}, {random.choice(self.details)}, {random.choice(self.stories)}, {random.choice(self.atmospheres)}, {random.choice(self.qualities)}, {random.choice(self.qualities)}",
-            
-            # Structure 2: Main element-focused
-            f"{random.choice(self.main_elements)} {random.choice(self.times)} {random.choice(self.environments)}, {random.choice(self.details)}, {random.choice(self.stories)}, {random.choice(self.atmospheres)}, {random.choice(self.qualities)}, {random.choice(self.qualities)}",
-            
-            # Structure 3: Story-focused
-            f"A realm {random.choice(self.stories)}, {random.choice(self.environments)}, with {random.choice(self.main_elements)}, {random.choice(self.details)}, {random.choice(self.atmospheres)}, {random.choice(self.qualities)}, {random.choice(self.qualities)}"
-        ]
-        
-        prompt = f"{random.choice(prompt_structures)}, trending on ArtStation"
+        prompt = generate_prompt()
         print(f"\nGenerated prompt: {prompt}")
         return prompt 

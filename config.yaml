@@ -11,9 +11,9 @@ api:
   height: 360
   url: http://orinputer.local:7860/sdapi/v1/txt2img
   background_color:
-  - 25
-  - 25
-  - 25
+  - 75
+  - 75
+  - 75
   checkpoint: revAnimated_v2Pruned_393004
 clock:
   radius_margin: 20
