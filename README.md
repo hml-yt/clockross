@@ -8,6 +8,7 @@ An elegant analog clock application that uses Stable Diffusion AI to generate dy
 - AI-generated backgrounds using Stable Diffusion
 - Dynamic color adaptation based on the generated background
 - Smooth animations and transitions
+- High-resolution display (1024x600) with optimized API rendering (640x360)
 - Debug mode for development and troubleshooting
 
 ## Project Structure
@@ -68,15 +69,28 @@ The clock will start and automatically generate new backgrounds every 15 seconds
 ## Configuration
 
 - The Stable Diffusion API endpoint can be configured in main.py
-- Clock dimensions and update intervals can be adjusted in main.py
+- Display resolution (1024x600) and API resolution (640x360) can be adjusted in main.py
+- Background update interval (15 seconds) can be modified in main.py
 - Prompt generation parameters can be modified in src/background/prompt_generator.py
+
+## Resolution Settings
+
+The application uses two different resolutions:
+- Display Resolution: 1024x600 - The actual window size and final rendering resolution
+- API Resolution: 640x360 - The resolution used for Stable Diffusion API requests
+
+This dual-resolution approach provides several benefits:
+1. Faster API processing with smaller images
+2. Reduced bandwidth usage
+3. Better performance on lower-end systems
+4. High-quality display output through proper scaling
 
 ## Development
 
 When running with the `--debug` flag, debug images are automatically saved during runtime:
-- Pre-API clock face images: debug_preapi_*.png
-- Generated backgrounds: debug_background_*.png
-- Clock face overlays: debug_clockface_*.png
+- Pre-API clock face images: debug_preapi_*.png (640x360)
+- Generated backgrounds: debug_background_*.png (640x360)
+- Clock face overlays: debug_clockface_*.png (1024x600)
 
 The debug mode also provides verbose output about:
 - API requests and responses
