@@ -41,30 +41,89 @@ api_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)  # For sending to
 overlay_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)  # For clock overlay
 
 def generate_random_prompt():
-    settings = [
+    # Time and lighting
+    times = [
         "at dawn", "at dusk", "under moonlight", "in twilight", "at midnight",
-        "in a mystical realm", "in a dream dimension", "in an ethereal space"
+        "during golden hour", "under a blood moon", "during solar eclipse",
+        "in perpetual twilight", "under starlight", "at sunrise", "at sunset"
     ]
+    
+    # Environments and landscapes
+    environments = [
+        "in a crystalline cave", "in an ancient temple", "in a floating city",
+        "in a submerged cathedral", "in a cosmic void", "in a quantum realm",
+        "in a steampunk workshop", "in a celestial observatory",
+        "in a forgotten library", "in an enchanted forest", "in a desert oasis",
+        "in a volcanic sanctuary", "in an arctic cathedral", "in a cloud kingdom",
+        "in a bioluminescent grove", "in a crystal canyon", "in a meteor crater",
+        "in a temporal nexus", "in an astral plane", "in a dimensional rift"
+    ]
+    
+    # Main subjects and focal points
     main_elements = [
         "a grand clockwork mechanism", "an ancient timekeeper's sanctuary",
         "a cosmic observatory", "a temporal dimension", "a time-bending realm",
-        "a celestial chronometer", "an ethereal timescape"
+        "a celestial chronometer", "an ethereal timescape", "a time wizard's study",
+        "a chronograph temple", "a temporal engine", "a reality-warping device",
+        "an interdimensional timepiece", "a cosmic time portal", "a quantum clock tower",
+        "an astrolabe sanctuary", "a temporal compass", "a time crystal formation",
+        "a mechanical constellation", "a dimensional sundial", "an ethereal hourglass"
     ]
+    
+    # Atmospheric elements and details
     details = [
         "intricate gears floating in space", "swirling time spirals",
         "floating numerical constellations", "temporal energy streams",
-        "crystalline chronographs", "orbiting time fragments"
+        "crystalline chronographs", "orbiting time fragments",
+        "cascading light particles", "flowing time rivers", "dancing auroras",
+        "geometric light patterns", "holographic time glyphs", "levitating crystals",
+        "temporal storm clouds", "quantum dust motes", "prismatic refractions",
+        "nebulous time streams", "fractal patterns", "cosmic clockwork",
+        "temporal butterflies", "chronometric fractals", "time-worn artifacts",
+        "ethereal wisps", "dimensional echoes", "crystalline formations",
+        "ancient runes", "floating mathematical equations", "astral projections"
     ]
+    
+    # Mood and atmosphere
     atmospheres = [
         "serene and mysterious", "enigmatic and profound",
-        "timeless and ethereal", "cosmic and surreal"
+        "timeless and ethereal", "cosmic and surreal",
+        "mystical and ancient", "otherworldly and transcendent",
+        "dreamlike and floating", "metaphysical and abstract",
+        "sacred and divine", "infinite and vast", "peaceful and harmonious",
+        "magical and enchanted", "celestial and cosmic", "ethereal and ghostly"
     ]
+    
+    # Technical qualities
     qualities = [
-        "ultra-detailed", "hyper-realistic", "HDR", "8k",
-        "cinematic lighting", "dramatic atmosphere"
+        "ultra-detailed", "hyper-realistic", "HDR", "8k", "32k",
+        "cinematic lighting", "dramatic atmosphere", "volumetric lighting",
+        "ray tracing", "photorealistic", "studio quality", "professional photography",
+        "octane render", "unreal engine", "dynamic range", "atmospheric perspective"
+    ]
+    
+    # Story elements
+    stories = [
+        "where time stands still", "where past meets future",
+        "where reality bends", "where dimensions converge",
+        "where time flows backwards", "where eternity unfolds",
+        "where moments crystallize", "where infinity loops",
+        "where chronology fractures", "where time spirals endlessly"
     ]
 
-    prompt = f"{random.choice(main_elements)} {random.choice(settings)}, {random.choice(details)}, {random.choice(details)}, {random.choice(atmospheres)}, {random.choice(qualities)}, {random.choice(qualities)}, trending on ArtStation"
+    # Construct the prompt with more variation
+    prompt_structure = random.choice([
+        # Structure 1: Environment-focused
+        f"A {random.choice(environments)} {random.choice(times)}, featuring {random.choice(main_elements)}, {random.choice(details)}, {random.choice(details)}, {random.choice(stories)}, {random.choice(atmospheres)}, {random.choice(qualities)}, {random.choice(qualities)}",
+        
+        # Structure 2: Main element-focused
+        f"{random.choice(main_elements)} {random.choice(times)} {random.choice(environments)}, {random.choice(details)}, {random.choice(stories)}, {random.choice(atmospheres)}, {random.choice(qualities)}, {random.choice(qualities)}",
+        
+        # Structure 3: Story-focused
+        f"A realm {random.choice(stories)}, {random.choice(environments)}, with {random.choice(main_elements)}, {random.choice(details)}, {random.choice(atmospheres)}, {random.choice(qualities)}, {random.choice(qualities)}"
+    ])
+    
+    prompt = f"{prompt_structure}, trending on ArtStation"
     print(f"\nGenerated prompt: {prompt}")
     return prompt
 
