@@ -26,19 +26,6 @@ class SettingsUI:
                 'value': self.config.clock['use_numbers']
             },
             {
-                'name': 'Font',
-                'key': ('clock', 'font'),
-                'type': 'select',
-                'value': self.config.clock['font'],
-                'options': [
-                    "Arial",
-                    "Helvetica",
-                    "Times New Roman",
-                    "Brush Script MT",
-                    "Random"
-                ]
-            },
-            {
                 'name': 'Background Color',
                 'key': ('api', 'background_color'),
                 'type': 'color',
@@ -123,6 +110,9 @@ class SettingsUI:
                 setting['value'] = list(presets[next_index])
                 # Update config
                 self.config.update(setting['key'][0], setting['key'][1], setting['value'])
+                # Force background update if it was the background color setting
+                if setting['key'][1] == 'background_color' and self.background_updater:
+                    self.background_updater.last_attempt = 0  # Force update
             elif setting['type'] == 'select':
                 # Cycle through options
                 current_index = setting['options'].index(setting['value'])

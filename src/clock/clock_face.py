@@ -70,7 +70,7 @@ class ClockFace:
             # Convert 0 to 12
             hour_num = 12 if hour == 0 else hour
             
-            # Create a temporary surface for the text with alpha channel
+            # Create text surface
             if is_overlay:
                 text = self.font.render(str(hour_num), True, (255, 255, 255))
                 # Create a surface with per-pixel alpha
@@ -83,9 +83,13 @@ class ClockFace:
             else:
                 text = self.font.render(str(hour_num), True, color)
             
-            # Center the text at the calculated position
-            text_rect = text.get_rect(center=pos)
-            surface.blit(text, text_rect)
+            # Rotate the text
+            rotation_angle = math.degrees(angle) + 90  # Add 90 to align text properly
+            rotated_text = pygame.transform.rotate(text, -rotation_angle)
+            
+            # Get the rect of the rotated surface and position it
+            text_rect = rotated_text.get_rect(center=pos)
+            surface.blit(rotated_text, text_rect)
         else:
             # Draw traditional marker line
             start_pos = (
@@ -100,18 +104,21 @@ class ClockFace:
                            self.config.clock['marker_width'])
 
     def draw_clock_hands(self, hours, minutes):
-        """Draw clock hands for API only"""
-        self.api_surface.fill(self.gray)
+        """Draw the hour and minute hands on both surfaces"""
+        # Clear the surfaces
+        self.api_surface.fill((0, 0, 0, 0))
+        self.overlay_surface.fill((0, 0, 0, 0))
         
-        # Draw clock circle and markers to API if not rendering on screen
-        if not self.config.clock['render_on_screen']:
-            # Draw clock circle
-            pygame.draw.circle(self.api_surface, self.white, self.center, self.clock_radius, 
-                             self.config.clock['marker_width'])
-            
-            # Draw hour markers or numbers
-            for hour in range(12):
+        # Fill API surface with background color from current config
+        self.gray = tuple(self.config.api['background_color'])
+        self.api_surface.fill((*self.gray, 255))
+        
+        # Draw hour markers
+        for hour in range(12):
+            if not self.config.clock['render_on_screen']:
                 self.draw_hour_marker(self.api_surface, hour, self.white)
+            if self.config.clock['render_on_screen']:
+                self.draw_hour_marker(self.overlay_surface, hour, self.transparent_white, True)
         
         # Hour hand
         hour_angle = math.radians((hours % 12 + minutes / 60) * 360 / 12 - 90)
