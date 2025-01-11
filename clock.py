@@ -266,6 +266,23 @@ class BackgroundUpdater:
         self.last_attempt = 0
         self.is_updating = False
         self.update_thread = None
+        self.dominant_color = TRANSPARENT_WHITE  # Default color
+    
+    def _extract_dominant_color(self, pil_image):
+        """Extract the brightest color from the image (likely the clock hands/markers)"""
+        # Convert to RGB if not already
+        rgb_image = pil_image.convert('RGB')
+        # Resize to speed up processing
+        rgb_image.thumbnail((100, 100))
+        
+        # Get pixel data
+        pixels = list(rgb_image.getdata())
+        
+        # Calculate brightness for each pixel and find the brightest one
+        brightest_pixel = max(pixels, key=lambda p: sum(p))
+        
+        # Make it very transparent (75 for ~15% opacity)
+        return (*brightest_pixel, 75)
     
     def _do_update(self, clock_image_base64):
         """Internal method that runs in a separate thread to update the background"""
@@ -274,11 +291,21 @@ class BackgroundUpdater:
             if new_bg:
                 with self.lock:
                     self.background = new_bg
+                    self.dominant_color = self._extract_dominant_color(new_bg)
                     print(f"Background updated at {datetime.now().strftime('%H:%M:%S')}")
+                    print(f"New brightest color: RGB{self.dominant_color[:3]} (15% opacity)")
         finally:
             with self.lock:
                 self.is_updating = False
                 self.update_thread = None
+    
+    def get_background(self):
+        with self.lock:
+            return self.background
+    
+    def get_dominant_color(self):
+        with self.lock:
+            return self.dominant_color
     
     def update_background(self, clock_image_base64):
         current_time = time.time()
@@ -295,10 +322,6 @@ class BackgroundUpdater:
             )
             self.update_thread.daemon = True  # Thread will be killed when main program exits
             self.update_thread.start()
-    
-    def get_background(self):
-        with self.lock:
-            return self.background
     
     def should_update(self):
         return time.time() - self.last_attempt >= 15
@@ -392,13 +415,13 @@ def main():
         # Draw clock face overlay
         draw_clock_overlay(overlay_surface)
         
-        # Draw seconds hand on overlay
+        # Draw seconds hand on overlay with dominant color
         seconds_angle = math.radians(seconds * 360 / 60 - 90)
         seconds_end = (
             CENTER[0] + SECOND_HAND_LENGTH * math.cos(seconds_angle),
             CENTER[1] + SECOND_HAND_LENGTH * math.sin(seconds_angle)
         )
-        draw_tapered_line(overlay_surface, TRANSPARENT_WHITE, CENTER, seconds_end, 6, 2)
+        draw_tapered_line(overlay_surface, background_updater.get_dominant_color(), CENTER, seconds_end, 4, 1)
         
         # Draw overlay
         screen.blit(overlay_surface, (0, 0))
