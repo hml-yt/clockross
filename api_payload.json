@@ -6,7 +6,7 @@
         "controlnet": {
             "args": [
                 {
-                    "enabled": true,
+                    "enabled": "true",
                     "image": "{{base64_encoded_image}}",
                     "model": "control_v11f1e_sd15_tile",
                     "resize_mode": "Just Resize",
