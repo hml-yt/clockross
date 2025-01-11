@@ -16,10 +16,12 @@ It will refresh the background image in the background every 15 seconds.
 
 # Stable Diffusion API
 The Stable Diffusion API is at http://orinputer.local:7860/sdapi/v1/txt2img.
-The payload is in api_payload.json. Before calling the API, you need to encode the clock face to an image in base64 and generate a random prompt.
+The payload is in api_payload.json. 
+Before calling the API, you need to encode the clock face to an image in base64 and generate a random prompt.
+The app will replace the items in "{{template}}" with the relevant values. It will use "revAnimated" as the model by default.
 
 # Prompt
-The random prompt should be similar to the prompts in prompts.txt.
+The random prompt should be similar to the prompts in prompts.txt, generated randomly, and with the theme, description, and details selected randomly.
 
 # Setup
 To run the app, create a setup.sh that setups a venv and installs the requirements.txt.
