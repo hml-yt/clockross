@@ -53,6 +53,18 @@ An elegant analog clock application that uses Stable Diffusion AI to generate dy
    ```
 4. Configure your Stable Diffusion API endpoint in main.py
 5. Ensure api_payload.json is properly configured for your Stable Diffusion setup
+6. Set up system permissions:
+   ```bash
+   # Create a new sudoers file for the application
+   sudo visudo -f /etc/sudoers.d/clockross
+   
+   # Add this line (replace USER_NAME with your username):
+   USER_NAME ALL=(ALL) NOPASSWD: /sbin/shutdown
+   
+   # Set proper permissions
+   sudo chmod 440 /etc/sudoers.d/clockross
+   ```
+   This allows the application to use shutdown/restart commands from the settings menu.
 
 ## Usage
 

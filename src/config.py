@@ -122,4 +122,8 @@ class Config:
     
     @property
     def enhancement(self):
-        return self._config['enhancement'] 
+        return self._config['enhancement']
+        
+    @property
+    def system(self):
+        return self._config['system'] 

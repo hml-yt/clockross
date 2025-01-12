@@ -16,6 +16,9 @@ api:
   - 75
   background_darkness_variation: 0.2
   checkpoint: revAnimated_v2Pruned_393004
+system:
+  shutdown_cmd: sudo /sbin/shutdown -h now
+  restart_cmd: sudo /sbin/shutdown -r now
 clock:
   radius_margin: 20
   marker_length: 30

@@ -6,7 +6,6 @@ from src.background import BackgroundUpdater
 from src.settings import SettingsUI
 from src.utils import (
     surface_to_base64,
-    save_debug_image,
     scale_pil_image_to_display,
     pil_to_cv2,
     cv2_to_surface,
