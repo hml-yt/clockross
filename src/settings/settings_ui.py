@@ -90,6 +90,7 @@ class SettingsUI:
                 self.background_updater.last_attempt = 0  # Force update
                 self.checkpoint_changed = False
             self.visible = False
+            pygame.mouse.set_visible(False)  # Hide cursor when clicking outside
             return True
         
         # Calculate which setting was clicked
