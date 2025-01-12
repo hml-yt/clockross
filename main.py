@@ -50,6 +50,7 @@ def main():
     else:
         screen = pygame.display.set_mode((FULLSCREEN_WIDTH, FULLSCREEN_HEIGHT), pygame.FULLSCREEN | pygame.HWSURFACE | pygame.DOUBLEBUF)
         display_width, display_height = FULLSCREEN_WIDTH, FULLSCREEN_HEIGHT
+        pygame.mouse.set_visible(False)  # Hide cursor only in fullscreen mode
     pygame.display.set_caption("Analog Clock with AI Background")
     
     # Initialize components
@@ -60,9 +61,6 @@ def main():
     display_clock_face = ClockFace(display_width, display_height)
     background_updater = BackgroundUpdater(API_URL, debug=debug)
     settings_ui = SettingsUI(display_width, display_height, background_updater)
-    
-    # Start with cursor hidden
-    pygame.mouse.set_visible(False)
     
     running = True
     first_background_received = False
@@ -82,14 +80,10 @@ def main():
                     if not settings_ui.handle_click(event.pos):
                         # If settings didn't handle the click, toggle settings
                         settings_ui.toggle()
-                        # Show/hide cursor based on settings visibility
-                        pygame.mouse.set_visible(settings_ui.visible)
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     if settings_ui.visible:
                         settings_ui.visible = False
-                        # Hide cursor when closing settings with ESC
-                        pygame.mouse.set_visible(False)
                     else:
                         running = False
         

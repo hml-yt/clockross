@@ -14,9 +14,6 @@ class SettingsUI:
         self.clock_face = clock_face
         self.checkpoint_changed = False
         
-        # Set default cursor
-        pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
-        
         # Verification dialog state
         self.verification_visible = False
         self.verification_action = None  # 'shutdown' or 'restart'
