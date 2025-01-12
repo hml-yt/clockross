@@ -14,6 +14,9 @@ class SettingsUI:
         self.clock_face = clock_face
         self.checkpoint_changed = False
         
+        # Set default cursor
+        pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+        
         # Verification dialog state
         self.verification_visible = False
         self.verification_action = None  # 'shutdown' or 'restart'
@@ -77,12 +80,8 @@ class SettingsUI:
         # Colors
         self.panel_color = (30, 30, 30, 220)
         self.text_color = (255, 255, 255)
-        self.hover_color = (60, 60, 60)
         self.active_color = (0, 120, 255)
-        
-        # Track hover state
-        self.hover_index = -1
-    
+
     def toggle(self):
         """Toggle settings visibility"""
         if self.visible:  # If we're closing the panel
@@ -104,7 +103,6 @@ class SettingsUI:
                 self.checkpoint_changed = False
             if not self.verification_visible:  # Only hide if verification isn't showing
                 self.visible = False
-                pygame.mouse.set_visible(False)
             return True
             
         # Handle verification dialog if visible
@@ -231,20 +229,6 @@ class SettingsUI:
         
         return True
     
-    def handle_motion(self, pos):
-        """Handle mouse motion for hover effects"""
-        if not self.visible:
-            return
-        
-        if (self.panel_x <= pos[0] <= self.panel_x + self.panel_width and
-                self.panel_y <= pos[1] <= self.panel_y + self.panel_height):
-            relative_y = pos[1] - self.panel_y - self.padding
-            self.hover_index = int(relative_y // self.item_height)
-            if not (0 <= self.hover_index < len(self.settings)):
-                self.hover_index = -1
-        else:
-            self.hover_index = -1
-    
     def draw(self, surface):
         """Draw the settings UI if visible"""
         if not self.visible:
@@ -262,10 +246,6 @@ class SettingsUI:
                 self.panel_width,
                 self.item_height
             )
-            
-            # Draw hover highlight
-            if i == self.hover_index:
-                pygame.draw.rect(panel_surface, self.hover_color, item_rect)
             
             if setting['type'] == 'system_row':
                 # Draw system row with two buttons

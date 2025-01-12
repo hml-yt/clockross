@@ -84,8 +84,6 @@ def main():
                         settings_ui.toggle()
                         # Show/hide cursor based on settings visibility
                         pygame.mouse.set_visible(settings_ui.visible)
-            elif event.type == pygame.MOUSEMOTION:
-                settings_ui.handle_motion(event.pos)
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     if settings_ui.visible:
