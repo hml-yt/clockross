@@ -9,13 +9,13 @@ display:
 api:
   width: 640
   height: 360
-  url: http://orinputer.local:7860/sdapi/v1/txt2img
+  url: http://clockross.local:7860/sdapi/v1/txt2img
   background_color:
   - 75
   - 75
   - 75
   background_darkness_variation: 0.2
-  checkpoint: revAnimated_v2Pruned_393004
+  checkpoint: revAnimated_v2_pruned
 system:
   shutdown_cmd: sudo /sbin/shutdown -h now
   restart_cmd: sudo /sbin/shutdown -r now

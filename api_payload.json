@@ -18,7 +18,8 @@
             ]
         }
     },
-    "sampler_name": "DPM++ 2M Karras",
+    "sampler_name": "DPM++ 2M",
+    "scheduler": "Karras",
     "negative_prompt": "asian, (worst quality, low quality:1.4), watermark, signature, flower, facial marking, (women:1.2), (female:1.2), blue jeans, 3d, render, doll, plastic, blur, haze, monochrome, b&w, text, (ugly:1.2), unclear eyes, no arms, bad anatomy, cropped, censoring, asymmetric eyes, bad anatomy, bad proportions, cropped, cross-eyed, deformed, extra arms, extra fingers, extra limbs, fused fingers, jpeg artifacts, malformed, mangled hands, misshapen body, missing arms, missing fingers, missing hands, missing legs, poorly drawn, tentacle finger, too many arms, too many fingers, (worst quality, low quality:1.4), watermark, signature,illustration,painting, anime,cartoon",
     "steps": 12,
     "width": 640,
