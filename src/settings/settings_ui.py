@@ -5,6 +5,174 @@ import os
 import json
 from datetime import datetime
 from ..config import Config
+import time
+
+class Dialog:
+    def __init__(self, screen_width, screen_height, font):
+        self.screen_width = screen_width
+        self.screen_height = screen_height
+        self.font = font
+        self.padding = 30
+        self.visible = False
+        self.start_time = 0
+        self.duration = None  # None for confirmation dialogs, seconds for notifications
+        self.buttons = []  # Empty for notifications
+        self.message = ""
+        self.title = ""
+        self.callback = None
+        
+    def show_confirmation(self, title, message, callback):
+        """Show a confirmation dialog with Yes/No buttons"""
+        self.title = title
+        self.message = message
+        self.callback = callback
+        self.duration = None
+        self.buttons = ["Yes", "No"]
+        self.visible = True
+        
+    def show_notification(self, message, duration=2):
+        """Show a temporary notification message"""
+        self.title = ""
+        self.message = message
+        self.callback = None
+        self.duration = duration
+        self.buttons = []
+        self.visible = True
+        self.start_time = time.time()
+        
+    def handle_click(self, pos):
+        """Handle click events for the dialog"""
+        if not self.visible or not self.buttons:
+            return False
+            
+        dialog_width = 400
+        dialog_height = 200
+        dialog_x = (self.screen_width - dialog_width) // 2
+        dialog_y = (self.screen_height - dialog_height) // 2
+        
+        # Check if click is outside dialog
+        if not (dialog_x <= pos[0] <= dialog_x + dialog_width and
+                dialog_y <= pos[1] <= dialog_y + dialog_height):
+            self.visible = False
+            return True
+            
+        # Handle button clicks for confirmation dialog
+        button_width = (dialog_width - 3 * self.padding) // 2
+        button_height = 60
+        button_y = dialog_height - self.padding - button_height
+        
+        # Check Yes button
+        yes_rect = pygame.Rect(
+            dialog_x + self.padding,
+            dialog_y + button_y,
+            button_width,
+            button_height
+        )
+        if yes_rect.collidepoint(pos[0], pos[1]):
+            if self.callback:
+                self.callback(True)
+            self.visible = False
+            return True
+        
+        # Check No button
+        no_rect = pygame.Rect(
+            dialog_x + dialog_width - self.padding - button_width,
+            dialog_y + button_y,
+            button_width,
+            button_height
+        )
+        if no_rect.collidepoint(pos[0], pos[1]):
+            if self.callback:
+                self.callback(False)
+            self.visible = False
+            return True
+        
+        return True
+        
+    def draw(self, surface):
+        """Draw the dialog"""
+        if not self.visible:
+            return
+            
+        # Handle auto-hide for notifications
+        if self.duration is not None:
+            current_time = time.time()
+            if current_time - self.start_time > self.duration:
+                self.visible = False
+                return
+                
+        # For notifications, use a smaller dialog
+        if not self.buttons:
+            # Calculate fade out alpha for notifications
+            alpha = int(255 * (1 - (time.time() - self.start_time) / self.duration))
+            
+            # Draw notification
+            message_surface = pygame.Surface((300, 60), pygame.SRCALPHA)
+            message_text = self.font.render(self.message, True, (255, 255, 255))
+            text_rect = message_text.get_rect(center=(150, 30))
+            
+            # Draw semi-transparent background
+            pygame.draw.rect(message_surface, (40, 40, 40, min(200, alpha)), message_surface.get_rect(), border_radius=10)
+            pygame.draw.rect(message_surface, (80, 80, 80, min(200, alpha)), message_surface.get_rect(), 2, border_radius=10)
+            
+            # Apply fade out to text
+            message_text.set_alpha(alpha)
+            message_surface.blit(message_text, text_rect)
+            
+            # Position at bottom center of screen
+            message_x = (self.screen_width - 300) // 2
+            message_y = self.screen_height - 80
+            surface.blit(message_surface, (message_x, message_y))
+            return
+            
+        # Draw darkened overlay for confirmation dialogs
+        overlay = pygame.Surface((self.screen_width, self.screen_height))
+        overlay.fill((0, 0, 0))
+        overlay.set_alpha(180)
+        surface.blit(overlay, (0, 0))
+        
+        # Draw confirmation dialog
+        dialog_width = 400
+        dialog_height = 200
+        dialog_x = (self.screen_width - dialog_width) // 2
+        dialog_y = (self.screen_height - dialog_height) // 2
+        
+        dialog_surface = pygame.Surface((dialog_width, dialog_height), pygame.SRCALPHA)
+        pygame.draw.rect(dialog_surface, (40, 40, 40, 250), dialog_surface.get_rect())
+        pygame.draw.rect(dialog_surface, (80, 80, 80), dialog_surface.get_rect(), 2)
+        
+        # Draw title
+        title = self.font.render(self.title, True, (255, 255, 255))
+        title_x = (dialog_width - title.get_width()) // 2
+        dialog_surface.blit(title, (title_x, self.padding))
+        
+        # Draw message
+        message = self.font.render(self.message, True, (255, 255, 255))
+        message_x = (dialog_width - message.get_width()) // 2
+        dialog_surface.blit(message, (message_x, self.padding + 45))
+        
+        # Draw buttons
+        button_width = (dialog_width - 3 * self.padding) // 2
+        button_height = 60
+        button_y = dialog_height - self.padding - button_height
+        
+        # Yes button (red)
+        yes_rect = pygame.Rect(self.padding, button_y, button_width, button_height)
+        pygame.draw.rect(dialog_surface, (180, 60, 60), yes_rect)
+        pygame.draw.rect(dialog_surface, (200, 80, 80), yes_rect, 2)
+        yes_text = self.font.render("Yes", True, (255, 255, 255))
+        text_x = self.padding + (button_width - yes_text.get_width()) // 2
+        dialog_surface.blit(yes_text, (text_x, button_y + (button_height - yes_text.get_height()) // 2))
+        
+        # No button (blue)
+        no_rect = pygame.Rect(dialog_width - self.padding - button_width, button_y, button_width, button_height)
+        pygame.draw.rect(dialog_surface, (60, 120, 180), no_rect)
+        pygame.draw.rect(dialog_surface, (80, 140, 200), no_rect, 2)
+        no_text = self.font.render("No", True, (255, 255, 255))
+        text_x = dialog_width - self.padding - button_width + (button_width - no_text.get_width()) // 2
+        dialog_surface.blit(no_text, (text_x, button_y + (button_height - no_text.get_height()) // 2))
+        
+        surface.blit(dialog_surface, (dialog_x, dialog_y))
 
 class SettingsUI:
     def __init__(self, screen_width, screen_height, background_updater=None, surface_manager=None):
@@ -16,10 +184,25 @@ class SettingsUI:
         self.surface_manager = surface_manager
         self.checkpoint_changed = False
         
-        # Verification dialog state
-        self.verification_visible = False
-        self.verification_action = None  # 'shutdown' or 'restart'
+        # UI settings
+        self.padding = 30
+        self.item_height = 60
+        self.font_size = 32
+        self.font = pygame.font.Font(None, self.font_size)
+        self.panel_width = 600
         
+        # Dialog system
+        self.dialog = Dialog(screen_width, screen_height, self.font)
+        
+        # Colors
+        self.panel_color = (30, 30, 30, 220)
+        self.text_color = (255, 255, 255)
+        self.active_color = (0, 120, 255)
+        
+        # Font options for random selection
+        self.font_options = ["Arial", "Helvetica", "Times New Roman", "Brush Script MT"]
+        
+        # Define settings
         self.settings = [
             {
                 'name': 'Display Mode',
@@ -59,27 +242,10 @@ class SettingsUI:
             }
         ]
         
-        # Font options for random selection
-        self.font_options = ["Arial", "Helvetica", "Times New Roman", "Brush Script MT"]
-        
-        # UI settings
-        self.padding = 30
-        self.item_height = 60
-        self.font_size = 32
-        self.font = pygame.font.Font(None, self.font_size)
-        self.panel_width = 600
-        
-        # Calculate panel height
+        # Calculate panel dimensions
         self.panel_height = len(self.settings) * self.item_height + 2 * self.padding
-        
-        # Calculate panel position (centered)
         self.panel_x = (screen_width - self.panel_width) // 2
         self.panel_y = (screen_height - self.panel_height) // 2
-        
-        # Colors
-        self.panel_color = (30, 30, 30, 220)
-        self.text_color = (255, 255, 255)
-        self.active_color = (0, 120, 255)
 
     def toggle(self):
         """Toggle settings visibility"""
@@ -93,63 +259,20 @@ class SettingsUI:
         """Handle mouse click at the given position"""
         if not self.visible:
             return False
-        
+            
+        # Let dialog handle clicks first if visible
+        if self.dialog.visible:
+            return self.dialog.handle_click(pos)
+            
         # Check if click is inside panel
         if not (self.panel_x <= pos[0] <= self.panel_x + self.panel_width and
                 self.panel_y <= pos[1] <= self.panel_y + self.panel_height):
             if self.checkpoint_changed and self.background_updater:
                 self.background_updater.last_attempt = 0  # Force update
                 self.checkpoint_changed = False
-            if not self.verification_visible:  # Only hide if verification isn't showing
-                self.visible = False
+            self.visible = False
             return True
             
-        # Handle verification dialog if visible
-        if self.verification_visible:
-            dialog_width = 400
-            dialog_height = 200
-            dialog_x = (self.screen_width - dialog_width) // 2
-            dialog_y = (self.screen_height - dialog_height) // 2
-            
-            # Check if click is outside dialog
-            if not (dialog_x <= pos[0] <= dialog_x + dialog_width and
-                    dialog_y <= pos[1] <= dialog_y + dialog_height):
-                self.verification_visible = False
-                return True
-            
-            # Calculate button positions
-            button_width = (dialog_width - 3 * self.padding) // 2
-            button_height = 60
-            button_y = dialog_height - self.padding - button_height
-            
-            # Check Yes button
-            yes_rect = pygame.Rect(
-                dialog_x + self.padding,
-                dialog_y + button_y,
-                button_width,
-                button_height
-            )
-            if yes_rect.collidepoint(pos[0], pos[1]):
-                if self.verification_action == 'shutdown':
-                    os.system(self.config.system["shutdown_cmd"])
-                else:
-                    os.system(self.config.system["restart_cmd"])
-                self.verification_visible = False
-                return True
-            
-            # Check No button
-            no_rect = pygame.Rect(
-                dialog_x + dialog_width - self.padding - button_width,
-                dialog_y + button_y,
-                button_width,
-                button_height
-            )
-            if no_rect.collidepoint(pos[0], pos[1]):
-                self.verification_visible = False
-                return True
-            
-            return True
-        
         # Calculate which setting was clicked
         relative_y = pos[1] - self.panel_y - self.padding
         index = int(relative_y // self.item_height)
@@ -174,8 +297,10 @@ class SettingsUI:
                     button_height
                 )
                 if shutdown_rect.collidepoint(pos[0], pos[1]):
-                    self.verification_visible = True
-                    self.verification_action = 'shutdown'
+                    def handle_shutdown(confirmed):
+                        if confirmed:
+                            os.system(self.config.system["shutdown_cmd"])
+                    self.dialog.show_confirmation("Confirm Shutdown", "Are you sure?", handle_shutdown)
                     return True
                 
                 # Check restart button
@@ -186,8 +311,10 @@ class SettingsUI:
                     button_height
                 )
                 if restart_rect.collidepoint(pos[0], pos[1]):
-                    self.verification_visible = True
-                    self.verification_action = 'restart'
+                    def handle_restart(confirmed):
+                        if confirmed:
+                            os.system(self.config.system["restart_cmd"])
+                    self.dialog.show_confirmation("Confirm Restart", "Are you sure?", handle_restart)
                     return True
             elif setting['type'] == 'bool':
                 # Toggle boolean value
@@ -237,6 +364,7 @@ class SettingsUI:
         if not self.surface_manager:
             return
         self.surface_manager.save_snapshot()
+        self.dialog.show_notification("Snapshot Saved!")
 
     def draw(self, surface):
         """Draw the settings UI if visible"""
@@ -322,57 +450,6 @@ class SettingsUI:
                 
         # Draw panel on main surface
         surface.blit(panel_surface, (self.panel_x, self.panel_y))
-
-        # Draw verification dialog if visible
-        if self.verification_visible:
-            # Draw darkened overlay
-            overlay = pygame.Surface((self.screen_width, self.screen_height))
-            overlay.fill((0, 0, 0))
-            overlay.set_alpha(180)
-            surface.blit(overlay, (0, 0))
-            
-            # Then draw the dialog
-            dialog_width = 400
-            dialog_height = 200
-            dialog_x = (self.screen_width - dialog_width) // 2
-            dialog_y = (self.screen_height - dialog_height) // 2
-            
-            # Draw dialog background with border
-            dialog_surface = pygame.Surface((dialog_width, dialog_height), pygame.SRCALPHA)
-            pygame.draw.rect(dialog_surface, (40, 40, 40, 250), dialog_surface.get_rect())
-            pygame.draw.rect(dialog_surface, (80, 80, 80), dialog_surface.get_rect(), 2)
-            
-            # Draw title
-            action_text = "Shutdown" if self.verification_action == 'shutdown' else "Restart"
-            title = self.font.render(f"Confirm {action_text}", True, self.text_color)
-            title_x = (dialog_width - title.get_width()) // 2
-            dialog_surface.blit(title, (title_x, self.padding))
-            
-            # Draw message
-            message = self.font.render("Are you sure?", True, self.text_color)
-            message_x = (dialog_width - message.get_width()) // 2
-            dialog_surface.blit(message, (message_x, self.padding + 45))
-            
-            # Draw buttons
-            button_width = (dialog_width - 3 * self.padding) // 2
-            button_height = 60
-            button_y = dialog_height - self.padding - button_height
-            
-            # Yes button (red)
-            yes_rect = pygame.Rect(self.padding, button_y, button_width, button_height)
-            pygame.draw.rect(dialog_surface, (180, 60, 60), yes_rect)
-            pygame.draw.rect(dialog_surface, (200, 80, 80), yes_rect, 2)
-            yes_text = self.font.render("Yes", True, self.text_color)
-            text_x = self.padding + (button_width - yes_text.get_width()) // 2
-            dialog_surface.blit(yes_text, (text_x, button_y + (button_height - yes_text.get_height()) // 2))
-            
-            # No button (blue)
-            no_rect = pygame.Rect(dialog_width - self.padding - button_width, button_y, button_width, button_height)
-            pygame.draw.rect(dialog_surface, (60, 120, 180), no_rect)
-            pygame.draw.rect(dialog_surface, (80, 140, 200), no_rect, 2)
-            no_text = self.font.render("No", True, self.text_color)
-            text_x = dialog_width - self.padding - button_width + (button_width - no_text.get_width()) // 2
-            dialog_surface.blit(no_text, (text_x, button_y + (button_height - no_text.get_height()) // 2))
-            
-            # Draw dialog on main surface
-            surface.blit(dialog_surface, (dialog_x, dialog_y)) 
+        
+        # Draw dialog if visible
+        self.dialog.draw(surface) 
