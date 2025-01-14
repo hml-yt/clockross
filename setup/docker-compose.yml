@@ -1,0 +1,25 @@
+version: '3'
+services:
+  stable-diffusion:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    runtime: nvidia
+    ports:
+      - "7860:7860"
+    volumes:
+      - ./models:/opt/stable-diffusion-webui/models
+      - ./outputs:/opt/stable-diffusion-webui/outputs
+      - /usr/local/lib/python3.10/dist-packages/:/usr/local/lib/python3.10/dist-packages/
+      - /usr/local/cuda-12.2:/usr/local/cuda-12.2
+      - /usr/lib/aarch64-linux-gnu/:/usr/lib/aarch64-linux-gnu/
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - LD_LIBRARY_PATH=/usr/local/cuda-12.2/lib64:/usr/lib/aarch64-linux-gnu
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [ gpu ]
