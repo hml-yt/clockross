@@ -43,12 +43,7 @@ class SettingsUI:
                 'key': ('api', 'checkpoint'),
                 'type': 'select',
                 'value': self.config.api['checkpoint'],
-                'options': [
-                    "abstractPhoto_abcevereMix_82372",
-                    "revAnimated_v2_pruned",
-                    "dreamlikeDiffusion10_10_72",
-                    "v1-5-pruned-emaonly"
-                ]
+                'options': self.config.api['checkpoints']
             },
             {
                 'name': 'System',

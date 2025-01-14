@@ -16,6 +16,11 @@ api:
   - 75
   background_darkness_variation: 0.2
   checkpoint: revAnimated_v2_pruned
+  checkpoints:
+  - default
+  - revAnimated_v2_pruned
+  - dreamlike-photoreal-2.0
+  - v1-5-pruned-emaonly
 system:
   shutdown_cmd: sudo /sbin/shutdown -h now
   restart_cmd: sudo /sbin/shutdown -r now

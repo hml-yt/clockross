@@ -53,12 +53,23 @@ class BackgroundUpdater:
         payload["prompt"] = self.prompt_generator.generate()
         payload["alwayson_scripts"]["controlnet"]["args"][0]["image"] = clock_image_base64
         
-        # Override checkpoint
-        payload["override_settings"]["sd_model_checkpoint"] = self.config.api['checkpoint']
+        # Override checkpoint only if not using default
+        if self.config.api['checkpoint'] != 'default':
+            payload["override_settings"]["sd_model_checkpoint"] = self.config.api['checkpoint']
+        elif "override_settings" in payload:
+            # Remove override_settings if using default and it exists
+            if "sd_model_checkpoint" in payload["override_settings"]:
+                del payload["override_settings"]["sd_model_checkpoint"]
+            # Remove entire override_settings if empty
+            if not payload["override_settings"]:
+                del payload["override_settings"]
         
         if self.debug:
             print("\nSending request to Stable Diffusion API...")
-            print(f"Using checkpoint: {self.config.api['checkpoint']}")
+            if self.config.api['checkpoint'] != 'default':
+                print(f"Using checkpoint: {self.config.api['checkpoint']}")
+            else:
+                print("Using default checkpoint")
         try:
             response = requests.post(self.api_url, json=payload, timeout=30)
             if response.status_code == 200:
