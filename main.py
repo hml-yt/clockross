@@ -60,7 +60,7 @@ def main():
     # Use display dimensions for the actual display clock face
     display_clock_face = ClockFace(display_width, display_height)
     background_updater = BackgroundUpdater(API_URL, debug=debug)
-    settings_ui = SettingsUI(display_width, display_height, background_updater)
+    settings_ui = SettingsUI(display_width, display_height, background_updater, api_clock_face)
     
     running = True
     first_background_received = False
@@ -96,7 +96,10 @@ def main():
             hands_surface = api_clock_face.draw_clock_hands(hours, minutes)
             hands_base64 = surface_to_base64(hands_surface, debug=debug)
             background_updater.update_background(hands_base64)
-            
+        
+        # Update the current hands surface in settings UI
+        settings_ui.current_hands_surface = hands_surface
+        
         # Clear screen with pure black
         screen.fill(BACKGROUND_COLOR)
         

@@ -25,3 +25,6 @@ __pycache__/
 
 # Dynamic settings
 dynamic_settings.yaml 
+
+# Snapshots
+snapshots/

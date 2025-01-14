@@ -2,6 +2,8 @@ import pygame
 import pygame.gfxdraw
 import random
 import os
+import json
+from datetime import datetime
 from ..config import Config
 
 class SettingsUI:
@@ -13,6 +15,10 @@ class SettingsUI:
         self.background_updater = background_updater
         self.clock_face = clock_face
         self.checkpoint_changed = False
+        self.current_hands_surface = None
+        
+        # Create screenshots directory if it doesn't exist
+        os.makedirs("snapshots", exist_ok=True)
         
         # Verification dialog state
         self.verification_visible = False
@@ -44,6 +50,11 @@ class SettingsUI:
                 'type': 'select',
                 'value': self.config.api['checkpoint'],
                 'options': self.config.api['checkpoints']
+            },
+            {
+                'name': 'Save snapshot',
+                'type': 'action',
+                'action': 'snapshot'
             },
             {
                 'name': 'System',
@@ -149,7 +160,11 @@ class SettingsUI:
         
         if 0 <= index < len(self.settings):
             setting = self.settings[index]
-            if setting['type'] == 'system_row':
+            if setting['type'] == 'action' and setting['action'] == 'snapshot':
+                print("Taking snapshot")
+                self.take_screenshot()
+                return True
+            elif setting['type'] == 'system_row':
                 # Calculate button positions exactly as drawn
                 button_width = (self.panel_width - 3 * self.padding) // 2
                 button_height = self.item_height - 10
@@ -221,6 +236,36 @@ class SettingsUI:
         
         return True
     
+    def take_screenshot(self):
+        """Take screenshots of the clock face, hands, and save API request"""
+        if not self.clock_face or not self.current_hands_surface:
+            return
+            
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Save clock face screenshot
+        pygame.image.save(self.current_hands_surface, f"snapshots/{timestamp}_1_clock.png")
+        
+        # Save filled API request
+        try:
+            with open('api_payload.json', 'r') as f:
+                api_request = json.load(f)
+                
+            # Fill in dynamic values if background updater exists
+            if self.background_updater and hasattr(self.background_updater, 'prompt_generator'):
+                api_request["prompt"] = self.background_updater.prompt_generator.generate()
+                
+            # Save the filled request
+            with open(f"snapshots/{timestamp}_2_api_request.json", 'w') as out:
+                json.dump(api_request, out, indent=2)
+                
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            print(f"Could not save API request: {e}")
+        
+        # Save current background if available
+        if self.background_updater and self.background_updater.current_background:
+            self.background_updater.current_background.save(f"snapshots/{timestamp}_3_background.png")
+
     def draw(self, surface):
         """Draw the settings UI if visible"""
         if not self.visible:
@@ -270,11 +315,22 @@ class SettingsUI:
                 text_x = self.padding * 2 + button_width + (button_width - restart_text.get_width()) // 2
                 text_y = button_y + (button_height - restart_text.get_height()) // 2
                 panel_surface.blit(restart_text, (text_x, text_y))
+            elif setting['type'] == 'action':
+                # Draw action button
+                button_rect = pygame.Rect(
+                    self.padding,
+                    self.padding + i * self.item_height + 5,
+                    self.panel_width - 2 * self.padding,
+                    self.item_height - 10
+                )
+                pygame.draw.rect(panel_surface, self.active_color, button_rect)
+                text = self.font.render(setting['name'], True, self.text_color)
+                text_rect = text.get_rect(center=button_rect.center)
+                panel_surface.blit(text, text_rect)
             else:
                 # Draw setting name
                 text = self.font.render(setting['name'], True, self.text_color)
-                text_y = self.padding + i * self.item_height + (self.item_height - text.get_height()) // 2
-                panel_surface.blit(text, (self.padding, text_y))
+                panel_surface.blit(text, (self.padding, self.padding + i * self.item_height + 10))
                 
                 # Draw setting value
                 if setting['type'] == 'bool':
@@ -290,11 +346,11 @@ class SettingsUI:
                 
                 value_surface = self.font.render(value_text, True, color)
                 value_x = self.panel_width - value_surface.get_width() - self.padding
-                panel_surface.blit(value_surface, (value_x, text_y))
-        
+                panel_surface.blit(value_surface, (value_x, self.padding + i * self.item_height + 10))
+                
         # Draw panel on main surface
         surface.blit(panel_surface, (self.panel_x, self.panel_y))
-        
+
         # Draw verification dialog if visible
         if self.verification_visible:
             # Draw darkened overlay
