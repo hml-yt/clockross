@@ -87,5 +87,50 @@ def cv2_to_surface(cv2_image):
     return pygame.surfarray.make_surface(rgb_image.swapaxes(0, 1))
 
 def morph_transition(prev_frame, next_frame, progress):
-    """Create a morphed transition between two frames"""
-    return cv2.addWeighted(prev_frame, 1 - progress, next_frame, progress, 0) 
+    """Create a morphed transition between two frames using optical flow.
+    
+    Args:
+        prev_frame: Previous frame (CV2 format)
+        next_frame: Next frame (CV2 format)
+        progress: Transition progress from 0 to 1
+        
+    Returns:
+        Morphed frame
+    """
+    config = Config()
+    flow_params = config.animation['morph_flow_params']
+    
+    # Convert frames to grayscale for optical flow
+    prev_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
+    next_gray = cv2.cvtColor(next_frame, cv2.COLOR_BGR2GRAY)
+    
+    # Calculate optical flow
+    flow = cv2.calcOpticalFlowFarneback(
+        prev_gray, 
+        next_gray,
+        None,
+        flow_params['pyr_scale'],
+        flow_params['levels'],
+        flow_params['winsize'],
+        flow_params['iterations'],
+        flow_params['poly_n'],
+        flow_params['poly_sigma'],
+        flow_params['flags']
+    )
+    
+    # Create meshgrid for warping
+    h, w = prev_frame.shape[:2]
+    y, x = np.mgrid[0:h, 0:w].astype(np.float32)
+    
+    # Scale flow by progress
+    flow *= progress
+    
+    # Calculate destination points
+    dst_x = x + flow[..., 0]
+    dst_y = y + flow[..., 1]
+    
+    # Warp previous frame towards next frame
+    warped = cv2.remap(prev_frame, dst_x, dst_y, cv2.INTER_LINEAR)
+    
+    # Blend warped frame with next frame based on progress
+    return cv2.addWeighted(warped, 1 - progress, next_frame, progress, 0) 

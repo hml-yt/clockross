@@ -51,4 +51,4 @@ animation:
     iterations: 3
     poly_n: 5
     poly_sigma: 1.2
-    flags: 0
+    flags: 256
