@@ -10,7 +10,8 @@ env/
 .Spotlight-V100
 .Trashes
 
-# Debug images
+# Debug files
+debug/
 debug_*.png
 
 # Python cache files

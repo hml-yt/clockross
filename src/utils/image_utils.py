@@ -5,6 +5,7 @@ from PIL import Image
 from datetime import datetime
 import cv2
 import numpy as np
+import os
 from ..config import Config
 
 def scale_pil_image_to_display(pil_image, target_width, target_height):
@@ -97,7 +98,8 @@ def surface_to_base64(surface, debug=False):
     # Save the pre-API image for debugging
     if debug:
         timestamp = datetime.now().strftime("%H%M%S")
-        debug_filename = f"debug_preapi_{timestamp}.png"
+        os.makedirs("debug", exist_ok=True)
+        debug_filename = os.path.join("debug", f"debug_preapi_{timestamp}.png")
         rgb_image.save(debug_filename)
         print(f"Saved pre-API image to {debug_filename}")
     
@@ -116,7 +118,8 @@ def save_debug_image(image, prefix):
         prefix: String prefix for the filename (e.g., 'clockface' or 'background')
     """
     timestamp = datetime.now().strftime("%H%M%S")
-    debug_filename = f"debug_{prefix}_{timestamp}.png"
+    os.makedirs("debug", exist_ok=True)
+    debug_filename = os.path.join("debug", f"debug_{prefix}_{timestamp}.png")
     
     if isinstance(image, pygame.Surface):
         pygame.image.save(image, debug_filename)
