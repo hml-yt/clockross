@@ -15,8 +15,7 @@ class BackgroundUpdater:
         self.config = Config()
         self.api_url = api_url
         self.debug = debug
-        self.current_background = None
-        self.previous_background = None
+        self.surface_manager = None
         self.current_color = (255, 255, 255, self.config.clock['overlay_opacity'])  # Default color
         self.previous_color = None
         self.transition_start = 0
@@ -27,6 +26,10 @@ class BackgroundUpdater:
         self.is_updating = False
         self.update_thread = None
         self.prompt_generator = PromptGenerator()
+    
+    def set_surface_manager(self, surface_manager):
+        """Set the surface manager instance"""
+        self.surface_manager = surface_manager
     
     def _extract_dominant_color(self, pil_image):
         """Extract the brightest color from the image (likely the clock hands/markers)"""
@@ -79,6 +82,11 @@ class BackgroundUpdater:
                 image = Image.open(BytesIO(image_data))
                 if self.debug:
                     save_debug_image(image, "background")
+                    
+                # Update API request in surface manager
+                if self.surface_manager:
+                    self.surface_manager.update_api_request(payload)
+                    
                 return image
             print(f"Error: API request failed with status code {response.status_code}")
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
@@ -93,13 +101,14 @@ class BackgroundUpdater:
             new_bg = self._get_background_image(clock_image_base64)
             if new_bg:
                 with self.lock:
-                    # Store the current background and color as previous for transition
-                    if self.current_background:
-                        self.previous_background = self.current_background
-                        self.previous_color = self.current_color
-                    self.current_background = new_bg
+                    # Store the current color as previous for transition
+                    self.previous_color = self.current_color
                     self.current_color = self._extract_dominant_color(new_bg)
-                    self.transition_start = time.time()
+                    
+                    # Update background in surface manager
+                    if self.surface_manager:
+                        self.surface_manager.update_background(new_bg, self.transition_duration)
+                    
                     if self.debug:
                         print(f"Background updated at {datetime.now().strftime('%H:%M:%S')}")
                         print(f"New brightest color: RGB{self.current_color[:3]} (15% opacity)")
@@ -116,17 +125,6 @@ class BackgroundUpdater:
             int(c1 + (c2 - c1) * progress)
             for c1, c2 in zip(color1, color2)
         )
-    
-    def get_background(self):
-        """Get the current background image and transition state"""
-        with self.lock:
-            if not self.current_background:
-                return None, 1.0
-            
-            # Calculate transition progress
-            progress = min(1.0, (time.time() - self.transition_start) / self.transition_duration)
-            
-            return (self.current_background, self.previous_background, progress)
     
     def get_dominant_color(self):
         """Get the current dominant color with transition"""

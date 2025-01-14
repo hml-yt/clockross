@@ -10,10 +10,6 @@ api:
   width: 640
   height: 360
   url: http://clockross.local:7860/sdapi/v1/txt2img
-  background_color:
-  - 75
-  - 75
-  - 75
   background_darkness_variation: 0.2
   checkpoint: revAnimated_v2_pruned
   checkpoints:

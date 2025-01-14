@@ -1,11 +1,12 @@
-from .clock import ClockFace
-from .background import BackgroundUpdater, PromptGenerator
-from .utils import surface_to_base64, save_debug_image
+from .movement import ClockFace
+from .clockface import BackgroundUpdater, PromptGenerator
+from .settings import SettingsUI
+from .config import Config
 
 __all__ = [
     'ClockFace',
     'BackgroundUpdater',
     'PromptGenerator',
-    'surface_to_base64',
-    'save_debug_image'
+    'SettingsUI',
+    'Config'
 ] 

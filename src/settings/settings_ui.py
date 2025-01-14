@@ -7,18 +7,14 @@ from datetime import datetime
 from ..config import Config
 
 class SettingsUI:
-    def __init__(self, screen_width, screen_height, background_updater=None, clock_face=None):
+    def __init__(self, screen_width, screen_height, background_updater=None, surface_manager=None):
         self.config = Config()
         self.screen_width = screen_width
         self.screen_height = screen_height
         self.visible = False
         self.background_updater = background_updater
-        self.clock_face = clock_face
+        self.surface_manager = surface_manager
         self.checkpoint_changed = False
-        self.current_hands_surface = None
-        
-        # Create screenshots directory if it doesn't exist
-        os.makedirs("snapshots", exist_ok=True)
         
         # Verification dialog state
         self.verification_visible = False
@@ -238,33 +234,9 @@ class SettingsUI:
     
     def take_screenshot(self):
         """Take screenshots of the clock face, hands, and save API request"""
-        if not self.clock_face or not self.current_hands_surface:
+        if not self.surface_manager:
             return
-            
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
-        # Save clock face screenshot
-        pygame.image.save(self.current_hands_surface, f"snapshots/{timestamp}_1_clock.png")
-        
-        # Save filled API request
-        try:
-            with open('api_payload.json', 'r') as f:
-                api_request = json.load(f)
-                
-            # Fill in dynamic values if background updater exists
-            if self.background_updater and hasattr(self.background_updater, 'prompt_generator'):
-                api_request["prompt"] = self.background_updater.prompt_generator.generate()
-                
-            # Save the filled request
-            with open(f"snapshots/{timestamp}_2_api_request.json", 'w') as out:
-                json.dump(api_request, out, indent=2)
-                
-        except (FileNotFoundError, json.JSONDecodeError) as e:
-            print(f"Could not save API request: {e}")
-        
-        # Save current background if available
-        if self.background_updater and self.background_updater.current_background:
-            self.background_updater.current_background.save(f"snapshots/{timestamp}_3_background.png")
+        self.surface_manager.save_snapshot()
 
     def draw(self, surface):
         """Draw the settings UI if visible"""

@@ -30,7 +30,11 @@ To run the app, create a setup.sh that setups a venv and installs the requiremen
 The app should output useful information to the console, including the prompt, when it sends the API request, and when it receives the response.
 
 # Debug Images
-The app should save debug images for:
-- The clock face template being sent to the API (debug_clockface_*.png)
+The app should save debug images when run with --debug:
 - The pre-API encoded image (debug_preapi_*.png)
 - The generated background from the API (debug_background_*.png)
+
+These debug images are saved in the debug/ directory and are useful for:
+- Verifying the clock face being sent to the API
+- Checking the quality of generated backgrounds
+- Troubleshooting API issues
