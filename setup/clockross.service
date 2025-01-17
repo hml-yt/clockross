@@ -1,7 +1,6 @@
 [Unit]
 Description=Clock App
-After=stable-diffusion.service network.target
-Requires=stable-diffusion.service
+After=network.target
 
 [Service]
 Environment=DISPLAY=:0
