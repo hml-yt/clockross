@@ -29,6 +29,10 @@ source venv/bin/activate
 pip install -r requirements.txt
 chown -R clockross:clockross /opt/clockross
 
+# Configure sudoers for clockross user
+echo "clockross ALL=(ALL) NOPASSWD: /usr/bin/shutdown" | sudo tee /etc/sudoers.d/clockross
+sudo chmod 440 /etc/sudoers.d/clockross
+
 # Set up the clockross service
 cp setup/clockross.service /etc/systemd/system/clockross.service
 sudo systemctl enable clockross
