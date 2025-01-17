@@ -54,9 +54,12 @@ RUN COMMANDLINE_ARGS="--skip-python-version-check --skip-torch-cuda-test --data-
     python launch.py --help && \ 
     pip show insightface
 
+# Copy config.json
+COPY config.json /data/config.json
+
 # Move extensions and models to data directory
 RUN mkdir -p data-template && \
-    mv /data data-template
+    mv /data/* data-template/
 
 # Copy init.sh
 ADD --chmod=755 init.sh ./
