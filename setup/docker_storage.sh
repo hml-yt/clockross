@@ -11,7 +11,7 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 
 # Set default storage location if not specified
-DOCKER_ROOT="${DOCKER_ROOT:-/mnt/ssd/docker}"
+DOCKER_ROOT="${DOCKER_ROOT:-/data/docker}"
 
 echo "Configuring Docker storage location..."
 echo "Target location: $DOCKER_ROOT"

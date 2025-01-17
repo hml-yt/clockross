@@ -61,5 +61,9 @@ ENV TRANSFORMERS_CACHE=/data/transformers
 ENV HF_HOME=/data/hf
 ENV HF_HUB_CACHE=/data/hf
 
+# Set up a healthcheck
+HEALTHCHECK --interval=10s --timeout=30s --start-period=90s --retries=3 \
+    CMD curl -f http://localhost:7860 || exit 1
+
 # Run the application
 CMD ["./init.sh"]

@@ -1,29 +1,20 @@
 #!/bin/bash
 
 # Install dependencies
-sudo apt-get update
+sudo apt-get update && sudo apt-get install -y python3 python3-pip python3-venv
 
 # Create the clockross user
 sudo useradd -m clockross
-sudo usermod -aG sudo clockross
 
-# Run the stable diffusion container
-docker run -d --restart=unless-stopped --runtime=nvidia --gpus all --network=host \
-    -v /mnt/ssd/sd-webui-data:/data \
-    --shm-size=8g \
-    hackml/stable-diffusion-webui-jp61:r36.4.2
-
-
-echo "Waiting stable diffusion to launch on 7860..."
-
-while ! nc -z localhost 7860; do   
-  sleep 0.1 # wait for 1/10 of the second before check again
-done
-
-echo "Stable diffusion launched"
+# Clone the clockross repository
+git clone https://github.com/hackml/clockross.git /opt/clockross
+cd /opt/clockross
 
 # Set up the monitor configuration
 cp setup/10-monitor.conf /etc/X11/xorg.conf.d/10-monitor.conf
+
+# Run the stable diffusion container
+source /opt/clockross/setup/docker-run.sh
 
 # Set the default target to multi-user.target
 sudo systemctl set-default multi-user.target
@@ -36,6 +27,7 @@ sudo systemctl start docker
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+chown -R clockross:clockross /opt/clockross
 
 # Set up the clockross service
 cp setup/clockross.service /etc/systemd/system/clockross.service
