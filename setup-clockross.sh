@@ -10,14 +10,14 @@ echo -e "${BLUE}Starting ClockRoss Setup...${NC}\n"
 
 # Install dependencies
 echo -e "${YELLOW}Step 1: Installing system dependencies...${NC}"
-apt-get update
-apt-get install -y python3 python3-pip python3-venv
+apt-get update && apt-get install -y python3 python3-pip python3-venv
 echo -e "${GREEN}✓ Dependencies installed successfully${NC}\n"
 
 # Disable screensaver and screen blanking
 echo -e "${YELLOW}Step 2: Configuring display settings...${NC}"
 sudo -u clockross dbus-launch gsettings set org.gnome.desktop.session idle-delay 0
 sudo -u clockross dbus-launch gsettings set org.gnome.desktop.screensaver lock-enabled false
+sudo -u clockross dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 'nothing'
 xset s off
 xset -dpms
 xset s noblank
@@ -102,6 +102,6 @@ echo -e "${YELLOW}Step 11: Preparing system restart...${NC}"
 echo -e "${GREEN}✓ Setup complete${NC}\n"
 
 echo -e "${BLUE}ClockRoss setup completed successfully!${NC}"
-echo -e "${YELLOW}Press Enter to restart the system...${NC}"
-read
+echo -e "${YELLOW}Restarting the system in 5 seconds...${NC}"
+sleep 5
 reboot
