@@ -56,6 +56,7 @@ RUN COMMANDLINE_ARGS="--skip-python-version-check --skip-torch-cuda-test --data-
 
 # Copy config.json
 COPY config.json /data/config.json
+COPY ui-config.json /data/ui-config.json
 
 # Move extensions and models to data directory
 RUN mkdir -p data-template && \
