@@ -38,9 +38,14 @@ RUN sed -i 's/^#export COMMANDLINE_ARGS=""/export COMMANDLINE_ARGS="--xformers -
 # Install extensions
 WORKDIR /data/extensions
 RUN git clone https://github.com/Mikubill/sd-webui-controlnet && \
-    git clone https://github.com/zanllp/sd-webui-infinite-image-browsing && \
+    git clone https://github.com/AlUlkesh/stable-diffusion-webui-images-browser && \
     git clone https://github.com/thomasasfk/sd-webui-aspect-ratio-helper && \
     git clone https://github.com/BlafKing/sd-civitai-browser-plus
+
+# Set environment variables
+ENV TRANSFORMERS_CACHE=/data/transformers
+ENV HF_HOME=/data/hf
+ENV HF_HUB_CACHE=/data/hf
 
 # Prepare environment and run tests in one layer
 WORKDIR /opt/stable-diffusion-webui
@@ -50,16 +55,11 @@ RUN COMMANDLINE_ARGS="--skip-python-version-check --skip-torch-cuda-test --data-
     pip show insightface
 
 # Move extensions and models to data directory
-RUN mkdir -p template && \
-    mv /data/extensions template/extensions
+RUN mkdir -p data-template && \
+    mv /data data-template
 
 # Copy init.sh
 ADD --chmod=755 init.sh ./
-
-# Set environment variables
-ENV TRANSFORMERS_CACHE=/data/transformers
-ENV HF_HOME=/data/hf
-ENV HF_HUB_CACHE=/data/hf
 
 # Set up a healthcheck
 HEALTHCHECK --interval=10s --timeout=30s --start-period=90s --retries=3 \

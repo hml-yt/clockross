@@ -21,18 +21,18 @@ xset s noblank
 cp setup/10-monitor.conf /etc/X11/xorg.conf.d/10-monitor.conf
 
 # Create the clockross user
-useradd -m clockross
+id -u clockross &>/dev/null || useradd -m clockross; usermod -aG sudo,docker clockross
 
 # Clone the clockross repository
 git clone https://github.com/hml-yt/clockross-cursor.git /opt/clockross
 cd /opt/clockross
 
 # Create /data directory and set ownership
-mkdir -p /data
-chown clockross:clockross /data
+mkdir -p /data/sd-webui-data
+chown clockross:clockross -R /data
 
 # Run the stable diffusion container
-source /opt/clockross/setup/docker-run.sh
+su clockross -c "/opt/clockross/setup/docker-run.sh"
 
 # Set the default target to multi-user.target
 systemctl set-default multi-user.target
@@ -54,19 +54,6 @@ chmod 440 /etc/sudoers.d/clockross
 # Set up the clockross service
 cp setup/clockross.service /etc/systemd/system/clockross.service
 systemctl enable clockross
-# Set up the clockross service
-cp setup/clockross.service /etc/systemd/system/clockross.service
-systemctl enable clockross
 
-# Create a separate script to handle the final steps
-cat > /tmp/finish-setup.sh << 'EOF'
-#!/bin/bash
-systemctl isolate multi-user.target
-sleep 5  # Give the system time to switch runlevels
-systemctl start clockross
-EOF
-
-chmod +x /tmp/finish-setup.sh
-
-# Schedule the finish-setup script to run after this script ends
-at now + 1 seconds -f /tmp/finish-setup.sh
+# Reboot the system
+reboot

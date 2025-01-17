@@ -28,7 +28,7 @@ download_controlnet_model() {
 }
 
 # Copy template contents if mounted directories are empty
-copy_if_empty /opt/stable-diffusion-webui/template/extensions /data/extensions
+copy_if_empty /opt/stable-diffusion-webui/data-template /data
 
 # Download ControlNet model if needed
 download_controlnet_model
