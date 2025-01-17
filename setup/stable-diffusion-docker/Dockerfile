@@ -62,7 +62,7 @@ RUN mkdir -p data-template && \
 ADD --chmod=755 init.sh ./
 
 # Set up a healthcheck
-HEALTHCHECK --interval=10s --timeout=30s --start-period=90s --retries=3 \
+HEALTHCHECK --interval=10s --timeout=30s --start-period=240s --retries=3 \
     CMD curl -f http://localhost:7860 || exit 1
 
 # Run the application

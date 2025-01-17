@@ -31,17 +31,14 @@ cd /opt/clockross
 mkdir -p /data/sd-webui-data
 chown clockross:clockross -R /data
 
-# Run the stable diffusion container
-su clockross -c "/opt/clockross/setup/docker-run.sh"
+# Set up the services
+cp setup/stable-diffusion.service /etc/systemd/system/
+cp setup/clockross.service /etc/systemd/system/
+systemctl enable stable-diffusion
+systemctl enable clockross
+systemctl start stable-diffusion
 
-# Set the default target to multi-user.target
-systemctl set-default multi-user.target
-
-# Set up the docker service
-systemctl enable docker
-systemctl start docker
-
-# Set up the clockross service
+# Set up the clockross environment
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
@@ -51,9 +48,16 @@ chown -R clockross:clockross /opt/clockross
 echo "clockross ALL=(ALL) NOPASSWD: /usr/bin/shutdown" > /etc/sudoers.d/clockross
 chmod 440 /etc/sudoers.d/clockross
 
-# Set up the clockross service
-cp setup/clockross.service /etc/systemd/system/clockross.service
-systemctl enable clockross
+# Set the default target to multi-user.target
+systemctl set-default multi-user.target
 
-# Reboot the system
-reboot
+# Write a finish-setup.sh script that runs 1 second after this script finishes, does init 3 and starts the clockross service
+cat > /tmp/finish-setup.sh << 'EOF'
+#!/bin/bash
+systemctl isolate multi-user.target
+systemctl start clockross
+EOF
+chmod +x /tmp/finish-setup.sh
+
+# Run it in 1 with at
+at now + 1 second < /tmp/finish-setup.sh
