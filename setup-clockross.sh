@@ -11,7 +11,7 @@ echo -e "${BLUE}Starting ClockRoss Setup...${NC}\n"
 # Install dependencies
 echo -e "${YELLOW}Step 1: Installing system dependencies...${NC}"
 apt-get update
-apt-get install -y python3 python3-pip python3-venv at
+apt-get install -y python3 python3-pip python3-venv
 echo -e "${GREEN}✓ Dependencies installed successfully${NC}\n"
 
 # Disable screensaver and screen blanking
