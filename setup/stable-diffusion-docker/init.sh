@@ -8,7 +8,7 @@ copy_if_empty() {
     # Check if destination is empty
     if [ -z "$(ls -A $dst 2>/dev/null)" ]; then
         echo "Initializing $dst with template content..."
-        cp -r $src $dst
+        cp -r $src/* $dst/
     else
         echo "$dst already contains files, skipping initialization"
     fi
@@ -28,7 +28,7 @@ download_controlnet_model() {
 }
 
 # Copy template contents if mounted directories are empty
-copy_if_empty /opt/stable-diffusion-webui/data-template /data
+copy_if_empty /opt/stable-diffusion-webui/data-template/ /data
 
 # Download ControlNet model if needed
 download_controlnet_model

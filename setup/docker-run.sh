@@ -19,7 +19,7 @@ docker run --runtime=nvidia --gpus all --network=host \
     -v /data/sd-webui-data:/data \
     --shm-size=8g \
     --name=stable-diffusion-webui \
-    hackml/stable-diffusion-webui-jp61:r36.4.2 &
+    hackml/stable-diffusion-webui-jp61 &
 container_pid=$!
 
 # Follow logs until the port is ready
