@@ -17,5 +17,8 @@ done
 pkill -P $$ docker
 echo "Stable Diffusion WebUI is up and running!"
 
+# Notify systemd that we're ready
+systemd-notify --ready
+
 # Keep the container running
 wait $(jobs -p | head -n1)
