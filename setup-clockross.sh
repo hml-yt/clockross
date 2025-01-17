@@ -3,7 +3,7 @@
 # Install dependencies
 apt-get update
 apt-get upgrade -y
-apt-get install -y python3 python3-pip python3-venv
+apt-get install -y python3 python3-pip python3-venv at
 
 # Install and enable persistent MAXN mode service
 cp setup/jetson-maxn.service /etc/systemd/system/
@@ -54,4 +54,19 @@ chmod 440 /etc/sudoers.d/clockross
 # Set up the clockross service
 cp setup/clockross.service /etc/systemd/system/clockross.service
 systemctl enable clockross
+# Set up the clockross service
+cp setup/clockross.service /etc/systemd/system/clockross.service
+systemctl enable clockross
+
+# Create a separate script to handle the final steps
+cat > /tmp/finish-setup.sh << 'EOF'
+#!/bin/bash
+systemctl isolate multi-user.target
+sleep 5  # Give the system time to switch runlevels
 systemctl start clockross
+EOF
+
+chmod +x /tmp/finish-setup.sh
+
+# Schedule the finish-setup script to run after this script ends
+at now + 1 seconds -f /tmp/finish-setup.sh
