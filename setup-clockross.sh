@@ -40,7 +40,7 @@ pip install -r requirements.txt
 chown -R clockross:clockross /opt/clockross
 
 # Configure sudoers for clockross user
-echo "clockross ALL=(ALL) NOPASSWD: /usr/bin/shutdown" > /etc/sudoers.d/clockross
+echo "clockross ALL=(ALL) NOPASSWD: /usr/sbin/shutdown" > /etc/sudoers.d/clockross
 chmod 440 /etc/sudoers.d/clockross
 
 # Set the default target to multi-user.target
