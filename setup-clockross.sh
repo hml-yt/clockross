@@ -12,9 +12,6 @@ xset s off
 xset -dpms
 xset s noblank
 
-# Set up the monitor configuration
-cp setup/10-monitor.conf /etc/X11/xorg.conf.d/10-monitor.conf
-
 # Create the clockross user
 id -u clockross &>/dev/null || useradd -m clockross; usermod -aG sudo,docker clockross
 
@@ -38,6 +35,9 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 chown -R clockross:clockross /opt/clockross
+
+# Set up the monitor configuration
+cp setup/10-monitor.conf /etc/X11/xorg.conf.d/10-monitor.conf
 
 # Configure sudoers for clockross user
 echo "clockross ALL=(ALL) NOPASSWD: /usr/sbin/shutdown" > /etc/sudoers.d/clockross
