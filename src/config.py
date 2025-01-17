@@ -32,7 +32,7 @@ class Config:
                     'use_numbers': self._config['clock']['use_numbers']
                 },
                 'api': {
-                    'background_color': self._config['api']['background_color'],
+                    'background_color': self._config['display']['background_color'],
                     'checkpoint': self._config['api']['checkpoint']
                 }
             }

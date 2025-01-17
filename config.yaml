@@ -3,9 +3,9 @@ display:
   windowed_height: 600
   fps: 30
   background_color:
-  - 0
-  - 0
-  - 0
+  - 70
+  - 70
+  - 70
 api:
   width: 640
   height: 360
