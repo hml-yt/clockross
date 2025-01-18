@@ -268,13 +268,15 @@ class SettingsUI:
         if self.dialog.visible:
             return self.dialog.handle_click(pos)
             
-        # Check if click is inside panel
+        # Check if click is outside panel
         if not (self.panel_x <= pos[0] <= self.panel_x + self.panel_width and
                 self.panel_y <= pos[1] <= self.panel_y + self.panel_height):
-            if self.checkpoint_changed and self.background_updater:
-                self.background_updater.last_attempt = 0  # Force update only, don't reload pipeline
-                self.checkpoint_changed = False
             self.visible = False
+            if self.checkpoint_changed and self.background_updater:
+                self.dialog.show_notification("Loading new pipeline...", duration=3)
+                self.background_updater.reload_pipeline()  # Reload the pipeline with new checkpoint
+                self.background_updater.last_attempt = 0  # Force update
+                self.checkpoint_changed = False
             return True
             
         # Calculate which setting was clicked
