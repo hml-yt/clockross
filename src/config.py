@@ -33,7 +33,9 @@ class Config:
                 },
                 'api': {
                     'background_color': self._config['display']['background_color'],
-                    'checkpoint': self._config['api']['checkpoint']
+                    'models': {
+                        'base': self._config['api']['models']['base']
+                    }
                 }
             }
             self.save_dynamic()

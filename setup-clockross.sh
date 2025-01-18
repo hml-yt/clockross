@@ -16,8 +16,14 @@ cd $INSTALL_DIR
 chown -R $SUDO_USER:$SUDO_USER $INSTALL_DIR
 echo -e "${GREEN}✓ Repository cloned successfully${NC}\n"
 
+# Install system dependencies
+echo -e "${YELLOW}Step 2: Installing system dependencies...${NC}"
+apt-get update
+apt-get install -y tesseract-ocr libtesseract-dev libopenblas-base libatlas3-base
+echo -e "${GREEN}✓ System dependencies installed${NC}\n"
+
 # Create virtual environment
-echo -e "${YELLOW}Step 2: Setting up Python environment...${NC}"
+echo -e "${YELLOW}Step 3: Setting up Python environment...${NC}"
 python3 -m venv venv
 source venv/bin/activate
 
@@ -26,13 +32,14 @@ pip install -r requirements.txt
 echo -e "${GREEN}✓ Python environment ready${NC}\n"
 
 # Create models directory and download models
-echo -e "${YELLOW}Step 3: Downloading AI models...${NC}"
+echo -e "${YELLOW}Step 4: Downloading AI models...${NC}"
 mkdir -p models
 
 # Define model URLs
 VAE_URL="https://huggingface.co/stabilityai/sd-vae-ft-mse-original/resolve/main/vae-ft-mse-840000-ema-pruned.safetensors"
 CONTROLNET_URL="https://huggingface.co/nolanaatama/models/resolve/main/control_v11f1e_sd15_tile_fp16.safetensors"
-BASE_MODEL_URL="https://civitai.com/api/download/models/115588?type=Model&format=SafeTensor&size=full&fp=fp16"
+ABSTRACT_MODEL_URL="https://civitai.com/api/download/models/115588?type=Model&format=SafeTensor&size=full&fp=fp16&token=e73d59d536fa858d3dc918289851d39f"
+REV_ANIMATED_URL="https://civitai.com/api/download/models/425083?type=Model&format=SafeTensor&size=full&fp=fp16&token=e73d59d536fa858d3dc918289851d39f"
 
 # Download models
 echo "Downloading VAE model..."
@@ -41,12 +48,15 @@ wget -O models/vae-ft-mse-840000-ema-pruned.safetensors "$VAE_URL"
 echo "Downloading ControlNet model..."
 wget -O models/control_v11f1e_sd15_tile.safetensors "$CONTROLNET_URL"
 
-echo "Downloading base model..."
-wget -O models/abstractPhoto_abcevereMix.safetensors "$BASE_MODEL_URL"
+echo "Downloading Abstract Photo model..."
+wget -O models/abstractPhoto_abcevereMix.safetensors "$ABSTRACT_MODEL_URL"
+
+echo "Downloading Rev Animated model..."
+wget -O models/revAnimated_v2Rebirth.safetensors "$REV_ANIMATED_URL"
 echo -e "${GREEN}✓ Models downloaded successfully${NC}\n"
 
 # Disable screensaver and screen blanking
-echo -e "${YELLOW}Step 4: Configuring display settings...${NC}"
+echo -e "${YELLOW}Step 5: Configuring display settings...${NC}"
 # Try GNOME settings first
 if command -v gsettings &> /dev/null; then
     gsettings set org.gnome.desktop.session idle-delay 0
@@ -62,7 +72,7 @@ fi
 echo -e "${GREEN}✓ Display settings configured${NC}\n"
 
 # Create systemd service
-echo -e "${YELLOW}Step 5: Setting up system service...${NC}"
+echo -e "${YELLOW}Step 6: Setting up system service...${NC}"
 cat > /etc/systemd/system/clockross.service << EOL
 [Unit]
 Description=ClockRoss AI Clock
@@ -91,13 +101,13 @@ systemctl enable clockross.service
 echo -e "${GREEN}✓ System service configured${NC}\n"
 
 # Configure sudoers for shutdown/restart
-echo -e "${YELLOW}Step 6: Configuring user permissions...${NC}"
+echo -e "${YELLOW}Step 7: Configuring user permissions...${NC}"
 echo "$SUDO_USER ALL=(ALL) NOPASSWD: /sbin/shutdown" > /etc/sudoers.d/clockross
 chmod 440 /etc/sudoers.d/clockross
 echo -e "${GREEN}✓ User permissions set${NC}\n"
 
 # Set the default target to multi-user.target
-echo -e "${YELLOW}Step 7: Setting system target...${NC}"
+echo -e "${YELLOW}Step 8: Setting system target...${NC}"
 systemctl set-default multi-user.target
 echo -e "${GREEN}✓ System target configured${NC}\n"
 

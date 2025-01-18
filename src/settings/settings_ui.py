@@ -225,9 +225,9 @@ class SettingsUI:
             },
             {
                 'name': 'Model Checkpoint',
-                'key': ('api', 'checkpoint'),
+                'key': ('api', 'models', 'base'),
                 'type': 'select',
-                'value': self.config.api['checkpoint'],
+                'value': self.config.api['models']['base'],
                 'options': self.config.api['checkpoints']
             },
             {

@@ -7,7 +7,7 @@ from PIL import Image
 from datetime import datetime
 import threading
 from diffusers import AutoencoderKL, ControlNetModel, StableDiffusionControlNetPipeline, DPMSolverMultistepScheduler
-from diffusers.utils import load_image
+from diffusers.schedulers import AysSchedules
 from .prompt_generator import PromptGenerator
 from ..utils import save_debug_image
 from ..config import Config
@@ -48,18 +48,27 @@ class BackgroundUpdater:
             torch_dtype=torch.float16
         ).to('cuda')
         
+        # Load sampling schedule
+        sampling_schedule = AysSchedules["StableDiffusionTimesteps"]
+        sigmas = AysSchedules["StableDiffusionSigmas"]
+        
         # Load main model
         self.pipe = StableDiffusionControlNetPipeline.from_single_file(
             self.config.api['models']['base'],
             controlnet=controlnet,
             torch_dtype=torch.float16,
             safety_checker=None,
+            generator=torch.Generator(device='cuda'),
+            timesteps=sampling_schedule,
+            sigmas=sigmas,
             vae=vae
         ).to('cuda')
         
         # Set up scheduler
         scheduler = DPMSolverMultistepScheduler.from_config(
             self.pipe.scheduler.config,
+            algorithm_type="dpmsolver++",
+            timestep_spacing="trailing",
             use_karras_sigmas=True
         )
         self.pipe.scheduler = scheduler

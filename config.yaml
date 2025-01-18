@@ -10,6 +10,9 @@ api:
   width: 640
   height: 360
   background_darkness_variation: 0.2
+  checkpoints:
+    - models/abstractPhoto_abcevereMix.safetensors
+    - models/revAnimated_v2Rebirth.safetensors
   models:
     vae: models/vae-ft-mse-840000-ema-pruned.safetensors
     controlnet: models/control_v11f1e_sd15_tile.safetensors
@@ -18,8 +21,8 @@ api:
     num_inference_steps: 12
     guidance_scale: 7
     controlnet_conditioning_scale: 1.0
-    control_guidance_start: 0.05
-    control_guidance_end: 0.9
+    control_guidance_start: 0.1
+    control_guidance_end: 0.8
 system:
   shutdown_cmd: sudo /sbin/shutdown -h now
   restart_cmd: sudo /sbin/shutdown -r now
