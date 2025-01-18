@@ -107,34 +107,32 @@ class BackgroundUpdater:
         if self.debug:
             print("Pipeline initialized successfully")
 
-    def reload_pipeline(self):
-        """Reload the pipeline with new configuration"""
-        with self.lock:
-            # Wait for any ongoing generation to complete with a timeout
-            if self.is_updating and self.update_thread and self.update_thread.is_alive():
-                if self.debug:
-                    print("Waiting for current generation to complete...")
-                try:
-                    # Wait up to 5 seconds for the thread to complete
-                    self.update_thread.join(timeout=5.0)
-                    if self.update_thread.is_alive():
-                        if self.debug:
-                            print("Generation timed out, forcing cleanup...")
-                except Exception as e:
-                    if self.debug:
-                        print(f"Error waiting for thread: {e}")
-                
-                # Force cleanup regardless of thread state
-                self.is_updating = False
-                self.update_thread = None
+    def _do_reload_pipeline(self):
+        """Internal method to handle the actual pipeline reload"""
+        if self.debug:
+            print("Starting pipeline reload...")
             
-            # Now safe to cleanup and reload
-            if self.debug:
-                print("Cleaning up old pipeline...")
-            self._cleanup_pipeline()
-            if self.debug:
-                print("Loading new pipeline...")
-            self._load_pipeline()
+        # Force cleanup of any ongoing generation
+        if self.is_updating and self.update_thread:
+            self.is_updating = False
+            self.update_thread = None
+        
+        # Now safe to cleanup and reload
+        if self.debug:
+            print("Cleaning up old pipeline...")
+        self._cleanup_pipeline()
+        if self.debug:
+            print("Loading new pipeline...")
+        self._load_pipeline()
+        
+        if self.debug:
+            print("Pipeline reload complete")
+
+    def reload_pipeline(self):
+        """Reload the pipeline with new configuration in a separate thread"""
+        reload_thread = threading.Thread(target=self._do_reload_pipeline)
+        reload_thread.daemon = True
+        reload_thread.start()
 
     def set_surface_manager(self, surface_manager):
         """Set the surface manager instance"""
