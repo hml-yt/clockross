@@ -2,6 +2,7 @@ import time
 import json
 import base64
 import torch
+import gc
 from io import BytesIO
 from PIL import Image
 from datetime import datetime
@@ -38,16 +39,28 @@ class BackgroundUpdater:
         
         self._load_pipeline()
 
+    def _empty_cache(self):
+        """Properly clean up Python and CUDA memory"""
+        gc.collect()
+        torch.cuda.empty_cache()
+        if self.debug:
+            print("Memory cache cleared")
+
     def _cleanup_pipeline(self):
         """Clean up the existing pipeline to free GPU memory"""
         if hasattr(self, 'pipe'):
             try:
-                # Move pipeline to CPU first
-                self.pipe = self.pipe.to('cpu')
-                # Clear CUDA cache
-                torch.cuda.empty_cache()
-                # Delete the pipeline
+                # Delete the pipeline components explicitly
+                if hasattr(self.pipe, 'vae'):
+                    del self.pipe.vae
+                if hasattr(self.pipe, 'controlnet'):
+                    del self.pipe.controlnet
+                if hasattr(self.pipe, 'scheduler'):
+                    del self.pipe.scheduler
+                # Delete the main pipeline
                 del self.pipe
+                # Clean up memory
+                self._empty_cache()
             except Exception as e:
                 if self.debug:
                     print(f"Error cleaning up pipeline: {e}")
@@ -97,7 +110,20 @@ class BackgroundUpdater:
     def reload_pipeline(self):
         """Reload the pipeline with new configuration"""
         with self.lock:
+            # Wait for any ongoing generation to complete
+            if self.is_updating and self.update_thread and self.update_thread.is_alive():
+                if self.debug:
+                    print("Waiting for current generation to complete...")
+                self.update_thread.join()
+                self.is_updating = False
+                self.update_thread = None
+            
+            # Now safe to cleanup and reload
+            if self.debug:
+                print("Cleaning up old pipeline...")
             self._cleanup_pipeline()
+            if self.debug:
+                print("Loading new pipeline...")
             self._load_pipeline()
 
     def set_surface_manager(self, surface_manager):
