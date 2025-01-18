@@ -9,14 +9,17 @@ display:
 api:
   width: 640
   height: 360
-  url: http://clockross.local:7860/sdapi/v1/txt2img
   background_darkness_variation: 0.2
-  checkpoint: revAnimated_v2_pruned
-  checkpoints:
-  - default
-  - revAnimated_v2_pruned
-  - dreamlike-photoreal-2.0
-  - v1-5-pruned-emaonly
+  models:
+    vae: models/vae-ft-mse-840000-ema-pruned.safetensors
+    controlnet: models/control_v11f1e_sd15_tile.safetensors
+    base: models/abstractPhoto_abcevereMix.safetensors
+  generation:
+    num_inference_steps: 12
+    guidance_scale: 7
+    controlnet_conditioning_scale: 1.0
+    control_guidance_start: 0.05
+    control_guidance_end: 0.9
 system:
   shutdown_cmd: sudo /sbin/shutdown -h now
   restart_cmd: sudo /sbin/shutdown -r now

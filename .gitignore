@@ -28,3 +28,6 @@ dynamic_settings.yaml
 
 # Snapshots
 snapshots/
+
+# Models
+models/

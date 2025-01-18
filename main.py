@@ -21,7 +21,6 @@ WINDOWED_WIDTH = config.display['windowed_width']
 WINDOWED_HEIGHT = config.display['windowed_height']
 API_WIDTH = config.api['width']
 API_HEIGHT = config.api['height']
-API_URL = config.api['url']
 BACKGROUND_COLOR = tuple(config.display['background_color'])
 
 def parse_args():
@@ -51,7 +50,7 @@ def main():
     # Use display dimensions for the actual display clock face
     display_clock_face = ClockFace(display_width, display_height)
     surface_manager = SurfaceManager(display_width, display_height, API_WIDTH, API_HEIGHT, debug=debug)
-    background_updater = BackgroundUpdater(API_URL, debug=debug)
+    background_updater = BackgroundUpdater(debug=debug)
     background_updater.set_surface_manager(surface_manager)
     settings_ui = SettingsUI(display_width, display_height, background_updater, surface_manager)
     
