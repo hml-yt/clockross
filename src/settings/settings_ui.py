@@ -250,10 +250,14 @@ class SettingsUI:
     def toggle(self):
         """Toggle settings visibility"""
         if self.visible:  # If we're closing the panel
+            self.visible = False  # Hide dialog first
             if self.checkpoint_changed and self.background_updater:
+                self.dialog.show_notification("Loading new pipeline...", duration=3)
+                self.background_updater.reload_pipeline()  # Reload the pipeline with new checkpoint
                 self.background_updater.last_attempt = 0  # Force update
                 self.checkpoint_changed = False
-        self.visible = not self.visible
+            return
+        self.visible = True
     
     def handle_click(self, pos):
         """Handle mouse click at the given position"""
@@ -268,7 +272,7 @@ class SettingsUI:
         if not (self.panel_x <= pos[0] <= self.panel_x + self.panel_width and
                 self.panel_y <= pos[1] <= self.panel_y + self.panel_height):
             if self.checkpoint_changed and self.background_updater:
-                self.background_updater.last_attempt = 0  # Force update
+                self.background_updater.last_attempt = 0  # Force update only, don't reload pipeline
                 self.checkpoint_changed = False
             self.visible = False
             return True

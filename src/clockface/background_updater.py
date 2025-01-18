@@ -36,6 +36,24 @@ class BackgroundUpdater:
         if self.debug:
             print("Initializing Stable Diffusion pipeline...")
         
+        self._load_pipeline()
+
+    def _cleanup_pipeline(self):
+        """Clean up the existing pipeline to free GPU memory"""
+        if hasattr(self, 'pipe'):
+            try:
+                # Move pipeline to CPU first
+                self.pipe = self.pipe.to('cpu')
+                # Clear CUDA cache
+                torch.cuda.empty_cache()
+                # Delete the pipeline
+                del self.pipe
+            except Exception as e:
+                if self.debug:
+                    print(f"Error cleaning up pipeline: {e}")
+
+    def _load_pipeline(self):
+        """Load the pipeline with current configuration"""
         # Load VAE
         vae = AutoencoderKL.from_single_file(
             self.config.api['models']['vae'],
@@ -75,7 +93,13 @@ class BackgroundUpdater:
         
         if self.debug:
             print("Pipeline initialized successfully")
-    
+
+    def reload_pipeline(self):
+        """Reload the pipeline with new configuration"""
+        with self.lock:
+            self._cleanup_pipeline()
+            self._load_pipeline()
+
     def set_surface_manager(self, surface_manager):
         """Set the surface manager instance"""
         self.surface_manager = surface_manager
