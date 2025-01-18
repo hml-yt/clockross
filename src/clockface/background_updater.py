@@ -12,6 +12,8 @@ from diffusers.schedulers import AysSchedules
 from .prompt_generator import PromptGenerator
 from ..utils import save_debug_image
 from ..config import Config
+import random
+import os
 
 class BackgroundUpdater:
     def __init__(self, debug=False):
@@ -127,9 +129,14 @@ class BackgroundUpdater:
         
         if self.debug:
             print("Pipeline reload complete")
+        
+        # Notify completion if callback is set
+        if hasattr(self, 'reload_complete_callback') and self.reload_complete_callback:
+            self.reload_complete_callback()
 
-    def reload_pipeline(self):
+    def reload_pipeline(self, complete_callback=None):
         """Reload the pipeline with new configuration in a separate thread"""
+        self.reload_complete_callback = complete_callback
         reload_thread = threading.Thread(target=self._do_reload_pipeline)
         reload_thread.daemon = True
         reload_thread.start()
@@ -170,6 +177,10 @@ class BackgroundUpdater:
             # Get generation settings from config
             gen_config = self.config.api['generation']
             
+            # Generate random seed
+            seed = random.randint(0, 2**32 - 1)
+            generator = torch.Generator(device='cuda').manual_seed(seed)
+            
             # Generate image
             image = self.pipe(
                 prompt,
@@ -182,11 +193,25 @@ class BackgroundUpdater:
                 guidance_scale=gen_config['guidance_scale'],
                 control_guidance_start=gen_config['control_guidance_start'],
                 control_guidance_end=gen_config['control_guidance_end'],
+                generator=generator
             ).images[0]
             
             if self.debug:
                 save_debug_image(image, "background")
                 print("Image generated successfully")
+            
+            # Store generation metadata
+            metadata = {
+                "prompt": prompt,
+                "seed": seed,
+                "checkpoint": os.path.basename(self.config.api['checkpoint']),
+                "timestamp": datetime.now().isoformat(),
+                "generation_config": gen_config
+            }
+            
+            # Update API request in surface manager
+            if self.surface_manager:
+                self.surface_manager.update_api_request(metadata)
             
             return image
             

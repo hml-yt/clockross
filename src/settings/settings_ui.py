@@ -97,19 +97,23 @@ class Dialog:
         # Handle auto-hide for notifications
         if self.duration is not None:
             current_time = time.time()
-            if current_time - self.start_time > self.duration:
-                self.visible = False
-                return
+            # Only check duration if not loading pipeline
+            if not hasattr(self, 'settings_ui') or not self.settings_ui.is_loading_pipeline:
+                if current_time - self.start_time > self.duration:
+                    self.visible = False
+                    return
                 
         # For notifications, use a smaller dialog
         if not self.buttons:
             # Calculate fade out alpha for notifications
-            alpha = int(255 * (1 - (time.time() - self.start_time) / self.duration))
+            alpha = 255
+            if not hasattr(self, 'settings_ui') or not self.settings_ui.is_loading_pipeline:
+                alpha = int(255 * (1 - (time.time() - self.start_time) / self.duration))
             
-            # Draw notification
-            message_surface = pygame.Surface((300, 60), pygame.SRCALPHA)
+            # Draw notification with wider width
+            message_surface = pygame.Surface((500, 60), pygame.SRCALPHA)
             message_text = self.font.render(self.message, True, (255, 255, 255))
-            text_rect = message_text.get_rect(center=(150, 30))
+            text_rect = message_text.get_rect(center=(250, 30))
             
             # Draw semi-transparent background
             pygame.draw.rect(message_surface, (40, 40, 40, min(200, alpha)), message_surface.get_rect(), border_radius=10)
@@ -120,7 +124,7 @@ class Dialog:
             message_surface.blit(message_text, text_rect)
             
             # Position at bottom center of screen
-            message_x = (self.screen_width - 300) // 2
+            message_x = (self.screen_width - 500) // 2
             message_y = self.screen_height - 80
             surface.blit(message_surface, (message_x, message_y))
             return
@@ -183,6 +187,7 @@ class SettingsUI:
         self.background_updater = background_updater
         self.surface_manager = surface_manager
         self.checkpoint_changed = False
+        self.is_loading_pipeline = False  # Add flag for pipeline loading state
         
         # UI settings
         self.padding = 30
@@ -193,6 +198,7 @@ class SettingsUI:
         
         # Dialog system
         self.dialog = Dialog(screen_width, screen_height, self.font)
+        self.dialog.settings_ui = self  # Add reference to settings UI
         
         # Colors
         self.panel_color = (30, 30, 30, 220)
@@ -252,8 +258,13 @@ class SettingsUI:
         if self.visible:  # If we're closing the panel
             self.visible = False  # Hide dialog first
             if self.checkpoint_changed and self.background_updater:
-                self.dialog.show_notification("Loading new pipeline...", duration=3)
-                self.background_updater.reload_pipeline()  # Reload the pipeline with new checkpoint
+                # Show notifications after a slight delay to ensure settings is hidden
+                pygame.time.wait(100)  # Short delay
+                self.is_loading_pipeline = True
+                self.dialog.show_notification(f"Loading checkpoint: {self.config.api['checkpoint'].split('_')[0]}...", duration=30)  # Long duration
+                def on_pipeline_loaded():
+                    self.is_loading_pipeline = False
+                self.background_updater.reload_pipeline(complete_callback=on_pipeline_loaded)  # Reload with callback
                 self.background_updater.last_attempt = 0  # Force update
                 self.checkpoint_changed = False
             return
@@ -273,8 +284,13 @@ class SettingsUI:
                 self.panel_y <= pos[1] <= self.panel_y + self.panel_height):
             self.visible = False
             if self.checkpoint_changed and self.background_updater:
-                self.dialog.show_notification("Loading new pipeline...", duration=3)
-                self.background_updater.reload_pipeline()  # Reload the pipeline with new checkpoint
+                # Show notifications after a slight delay to ensure settings is hidden
+                pygame.time.wait(100)  # Short delay
+                self.is_loading_pipeline = True
+                self.dialog.show_notification(f"Loading checkpoint: {self.config.api['checkpoint'].split('_')[0]}...", duration=30)  # Long duration
+                def on_pipeline_loaded():
+                    self.is_loading_pipeline = False
+                self.background_updater.reload_pipeline(complete_callback=on_pipeline_loaded)  # Reload with callback
                 self.background_updater.last_attempt = 0  # Force update
                 self.checkpoint_changed = False
             return True

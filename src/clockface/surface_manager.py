@@ -114,8 +114,27 @@ class SurfaceManager:
         
         # Save API request if available
         if self.last_api_request:
-            with open(f"{self.snapshots_dir}/{timestamp}_2_api_request.json", 'w') as f:
-                json.dump(self.last_api_request, f, indent=2)
+            # Create a more readable metadata file
+            metadata = {
+                "prompt": self.last_api_request["prompt"],
+                "seed": self.last_api_request["seed"],
+                "checkpoint": self.last_api_request["checkpoint"],
+                "timestamp": self.last_api_request["timestamp"],
+                "generation_settings": {
+                    "controlnet_conditioning_scale": self.last_api_request["generation_config"]["controlnet_conditioning_scale"],
+                    "num_inference_steps": self.last_api_request["generation_config"]["num_inference_steps"],
+                    "guidance_scale": self.last_api_request["generation_config"]["guidance_scale"],
+                    "control_guidance_start": self.last_api_request["generation_config"]["control_guidance_start"],
+                    "control_guidance_end": self.last_api_request["generation_config"]["control_guidance_end"]
+                }
+            }
+            
+            # Save metadata
+            with open(f"{self.snapshots_dir}/{timestamp}_2_metadata.json", 'w') as f:
+                json.dump(metadata, f, indent=2)
+            
+            if self.debug:
+                print(f"Saved metadata with seed {metadata['seed']} and checkpoint {metadata['checkpoint']}")
         
         # Save current background if available
         if self.current_background:
