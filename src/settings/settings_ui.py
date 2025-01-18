@@ -362,6 +362,7 @@ class SettingsUI:
                     # Mark checkpoint as changed if it was the checkpoint setting
                     if setting['key'][1] == 'checkpoint':
                         self.checkpoint_changed = True
+                        self.dialog.show_notification(f"Selected checkpoint: {setting['value'].split('_')[0]}")
         
         return True
     
