@@ -54,7 +54,7 @@ class BackgroundUpdater:
         
         # Load main model
         self.pipe = StableDiffusionControlNetPipeline.from_single_file(
-            self.config.api['models']['base'],
+            self.config.api['checkpoint'],
             controlnet=controlnet,
             torch_dtype=torch.float16,
             safety_checker=None,

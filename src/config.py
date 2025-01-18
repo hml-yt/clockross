@@ -33,9 +33,7 @@ class Config:
                 },
                 'api': {
                     'background_color': self._config['display']['background_color'],
-                    'models': {
-                        'base': self._config['api']['models']['base']
-                    }
+                    'checkpoint': self._config['api']['checkpoint']
                 }
             }
             self.save_dynamic()
@@ -104,10 +102,22 @@ class Config:
     @property
     def api(self):
         # Merge base and dynamic API settings
-        base_api = self._config['api'].copy()
-        if 'api' in self._dynamic:
-            base_api.update(self._dynamic['api'])
-        return base_api
+        api_config = dict(self._config.get('api', {}))
+        dynamic_api = self._dynamic.get('api', {})
+        
+        # Special handling for models to preserve all model paths
+        if 'models' in dynamic_api:
+            api_config['models'] = {
+                **self._config.get('api', {}).get('models', {}),
+                **dynamic_api.get('models', {})
+            }
+        
+        # Merge other API settings
+        for key, value in dynamic_api.items():
+            if key != 'models':
+                api_config[key] = value
+                
+        return api_config
     
     @property
     def clock(self):

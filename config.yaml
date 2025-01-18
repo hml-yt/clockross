@@ -10,13 +10,13 @@ api:
   width: 640
   height: 360
   background_darkness_variation: 0.2
+  checkpoint: models/abstractPhoto_abcevereMix.safetensors
   checkpoints:
     - models/abstractPhoto_abcevereMix.safetensors
     - models/revAnimated_v2Rebirth.safetensors
   models:
     vae: models/vae-ft-mse-840000-ema-pruned.safetensors
     controlnet: models/control_v11f1e_sd15_tile.safetensors
-    base: models/abstractPhoto_abcevereMix.safetensors
   generation:
     num_inference_steps: 12
     guidance_scale: 7
