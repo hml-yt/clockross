@@ -110,11 +110,21 @@ class BackgroundUpdater:
     def reload_pipeline(self):
         """Reload the pipeline with new configuration"""
         with self.lock:
-            # Wait for any ongoing generation to complete
+            # Wait for any ongoing generation to complete with a timeout
             if self.is_updating and self.update_thread and self.update_thread.is_alive():
                 if self.debug:
                     print("Waiting for current generation to complete...")
-                self.update_thread.join()
+                try:
+                    # Wait up to 5 seconds for the thread to complete
+                    self.update_thread.join(timeout=5.0)
+                    if self.update_thread.is_alive():
+                        if self.debug:
+                            print("Generation timed out, forcing cleanup...")
+                except Exception as e:
+                    if self.debug:
+                        print(f"Error waiting for thread: {e}")
+                
+                # Force cleanup regardless of thread state
                 self.is_updating = False
                 self.update_thread = None
             
