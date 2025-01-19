@@ -60,8 +60,8 @@ def main():
     # Force initial update
     now = datetime.now()
     hands_surface = render_clock_face.draw_clock_hands(now.hour, now.minute)
-    hands_base64 = surface_manager.update_hands(hands_surface)
-    background_updater.update_background(hands_base64)
+    surface_manager.update_hands(hands_surface)
+    background_updater.update_background(hands_surface)
     
     while running:
         for event in pygame.event.get():
@@ -86,8 +86,8 @@ def main():
         # Draw clock hands (for rendering)
         if background_updater.should_update():
             hands_surface = render_clock_face.draw_clock_hands(hours, minutes)
-            hands_base64 = surface_manager.update_hands(hands_surface)
-            background_updater.update_background(hands_base64)
+            surface_manager.update_hands(hands_surface)
+            background_updater.update_background(hands_surface)
         
         # Clear screen with pure black
         screen.fill(BACKGROUND_COLOR)

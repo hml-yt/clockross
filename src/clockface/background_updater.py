@@ -1,9 +1,7 @@
 import time
 import json
-import base64
 import torch
 import gc
-from io import BytesIO
 from PIL import Image
 from datetime import datetime
 import threading
@@ -14,6 +12,7 @@ from ..utils.image_utils import save_debug_image
 from ..config import Config
 import random
 import os
+import pygame
 
 class BackgroundUpdater:
     def __init__(self, debug=False):
@@ -161,12 +160,17 @@ class BackgroundUpdater:
         # Make it transparent according to config
         return (*brightest_pixel, self.config.clock['overlay_opacity'])
     
-    def _get_background_image(self, clock_image_base64):
+    def _get_background_image(self, hands_surface):
         """Generate a new background image using Stable Diffusion with ControlNet"""
         try:
-            # Convert base64 to PIL Image
-            image_data = base64.b64decode(clock_image_base64)
-            source_image = Image.open(BytesIO(image_data))
+            # Convert pygame surface (RGB) to PIL Image
+            array = pygame.surfarray.array3d(hands_surface)
+            # Ensure array is in the correct shape (height, width, channels)
+            array = array.transpose(1, 0, 2)
+            source_image = Image.fromarray(array)
+            
+            if self.debug:
+                save_debug_image(source_image, "prerender")
             
             # Generate prompt
             prompt = self.prompt_generator.generate()
@@ -219,10 +223,10 @@ class BackgroundUpdater:
             print(f"Error: Failed to generate image: {e}")
             return None
     
-    def _do_update(self, clock_image_base64):
+    def _do_update(self, hands_surface):
         """Internal method that runs in a separate thread to update the background"""
         try:
-            new_bg = self._get_background_image(clock_image_base64)
+            new_bg = self._get_background_image(hands_surface)
             if new_bg:
                 with self.lock:
                     # Store the current color as previous for transition
@@ -263,7 +267,7 @@ class BackgroundUpdater:
             # Interpolate between previous and current color
             return self._interpolate_color(self.previous_color, self.current_color, progress)
     
-    def update_background(self, clock_image_base64):
+    def update_background(self, hands_surface):
         """Start a background update if conditions are met"""
         current_time = time.time()
         with self.lock:
@@ -275,7 +279,7 @@ class BackgroundUpdater:
             # Create and start a new thread for the update
             self.update_thread = threading.Thread(
                 target=self._do_update,
-                args=(clock_image_base64,)
+                args=(hands_surface,)
             )
             self.update_thread.daemon = True  # Thread will be killed when main program exits
             self.update_thread.start()

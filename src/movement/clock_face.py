@@ -9,8 +9,16 @@ class ClockFace:
         self.config = Config()
         self.width = width
         self.height = height
-        self.center = (width // 2, height // 2)
-        self.clock_radius = min(width, height) // 2 - self.config.clock['radius_margin']
+        
+        # Calculate clock dimensions to maintain aspect ratio
+        if width / height > 1:  # Landscape
+            self.clock_size = height
+            self.center = (width // 2, height // 2)
+        else:  # Portrait or square
+            self.clock_size = width
+            self.center = (width // 2, height // 2)
+            
+        self.clock_radius = (self.clock_size // 2) - self.config.clock['radius_margin']
         self.marker_length = self.config.clock['marker_length']
         
         # Define hand length ratios for both modes (with and without numbers)
@@ -37,8 +45,8 @@ class ClockFace:
         self.transparent_white = (255, 255, 255, self.config.clock['overlay_opacity'])
         
         # Create surfaces
-        self.render_surface = pygame.Surface((width, height), pygame.SRCALPHA)
-        self.overlay_surface = pygame.Surface((width, height), pygame.SRCALPHA)
+        self.render_surface = pygame.Surface((width, height))  # RGB for diffusion
+        self.overlay_surface = pygame.Surface((width, height), pygame.SRCALPHA)  # RGBA for overlay
         
         # Initialize font for numbers
         self.font = pygame.font.Font(None, self.config.clock['font_size'])
@@ -149,11 +157,11 @@ class ClockFace:
         self._update_background_color()
         
         # Clear the surfaces
-        self.render_surface.fill((0, 0, 0, 0))
+        self.render_surface.fill(tuple(self.config.display['background_color']))  # Display background color
         self.overlay_surface.fill((0, 0, 0, 0))
         
-        # Fill render surface with background color
-        self.render_surface.fill((*self.gray, 255))
+        # Fill render surface with gray
+        self.render_surface.fill(self.gray)
         
         # Draw hour markers based on display mode
         display_mode = self.config.clock['display_mode']

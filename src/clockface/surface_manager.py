@@ -1,15 +1,12 @@
 import pygame
-import base64
 import cv2
 import numpy as np
 import json
 import os
 import time
 from PIL import Image
-from io import BytesIO
 from datetime import datetime
 from ..utils.image_utils import (
-    surface_to_base64,
     scale_pil_image_to_display,
     pil_to_cv2,
     cv2_to_surface,
@@ -44,9 +41,11 @@ class SurfaceManager:
         os.makedirs(self.snapshots_dir, exist_ok=True)
     
     def update_hands(self, surface):
-        """Update the hands surface and return base64 encoded PNG"""
+        """Update the hands surface and return it directly"""
         self.hands_surface = surface
-        return surface_to_base64(surface, self.debug)
+        if self.debug:
+            save_debug_image(surface, "prerender")
+        return surface
     
     def update_background(self, image_data):
         """Update the background surface with new image data"""
@@ -55,11 +54,9 @@ class SurfaceManager:
             self.prev_background = self.background_surface
             self.transition_progress = 0.0
         
-        # Convert PIL Image to pygame surface
-        mode = image_data.mode
-        size = image_data.size
-        data = image_data.tobytes()
-        self.background_surface = pygame.image.fromstring(data, size, mode)
+        # Convert PIL Image (RGB) to pygame surface
+        array = np.array(image_data)
+        self.background_surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
         
         if self.debug:
             save_debug_image(pygame.surfarray.array3d(self.background_surface), "background")
