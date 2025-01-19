@@ -24,7 +24,7 @@ __pycache__/
 .idea/ 
 
 # Dynamic settings
-dynamic_settings.yaml 
+local_config.yaml 
 
 # Snapshots
 snapshots/

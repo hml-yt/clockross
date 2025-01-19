@@ -11,7 +11,7 @@ class Config:
         return cls._instance
     
     def _load_config(self):
-        """Load configuration from config.yaml and dynamic_settings.yaml"""
+        """Load configuration from config.yaml and local_config.yaml"""
         # Load base config
         config_path = Path('config.yaml')
         if not config_path.exists():
@@ -20,8 +20,8 @@ class Config:
         with open(config_path, 'r') as f:
             self._config = yaml.safe_load(f)
             
-        # Load dynamic settings if exists, otherwise use defaults from base config
-        dynamic_path = Path('dynamic_settings.yaml')
+        # Load dynamic settings if they exist
+        dynamic_path = Path('local_config.yaml')
         if dynamic_path.exists():
             with open(dynamic_path, 'r') as f:
                 self._dynamic = yaml.safe_load(f)
@@ -34,6 +34,9 @@ class Config:
                 'render': {
                     'background_color': self._config['display']['background_color'],
                     'checkpoint': self._config['render']['checkpoint']
+                },
+                'prompts': {
+                    'enabled_styles': self._config['prompts']['enabled_styles']
                 }
             }
             self.save_dynamic()
@@ -46,7 +49,7 @@ class Config:
     
     def save_dynamic(self):
         """Save dynamic settings to separate file"""
-        dynamic_path = Path('dynamic_settings.yaml')
+        dynamic_path = Path('local_config.yaml')
         with open(dynamic_path, 'w') as f:
             yaml.dump(self._dynamic, f, default_flow_style=False, sort_keys=False)
     
@@ -138,4 +141,12 @@ class Config:
         
     @property
     def system(self):
-        return self._config['system'] 
+        return self._config['system']
+        
+    @property
+    def prompts(self):
+        # Merge base and dynamic prompt settings
+        base_prompts = self._config['prompts'].copy()
+        if 'prompts' in self._dynamic:
+            base_prompts.update(self._dynamic['prompts'])
+        return base_prompts 

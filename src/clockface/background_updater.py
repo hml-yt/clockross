@@ -7,6 +7,7 @@ from datetime import datetime
 import threading
 from diffusers import AutoencoderKL, ControlNetModel, StableDiffusionControlNetPipeline, DPMSolverMultistepScheduler
 from diffusers.schedulers import AysSchedules
+from transformers import CLIPTextModel
 from compel import Compel
 from .prompt_generator import PromptGenerator
 from ..utils.image_utils import save_debug_image
@@ -91,6 +92,17 @@ class BackgroundUpdater:
             vae=vae
         ).to('cuda')
         
+        # Apply CLIP skip by truncating layers
+        total_layers = len(self.pipe.text_encoder.text_model.encoder.layers)
+        clip_skip = self.config.render.get('clip_skip', 1)
+        layers_to_keep = total_layers - (clip_skip - 1)
+        
+        if self.debug:
+            print(f"Total CLIP layers: {total_layers}, keeping first {layers_to_keep} layers (clip_skip={clip_skip})")
+        
+        if clip_skip > 1:
+            self.pipe.text_encoder.text_model.encoder.layers = self.pipe.text_encoder.text_model.encoder.layers[:layers_to_keep]
+
         # Set up scheduler
         scheduler = DPMSolverMultistepScheduler.from_config(
             self.pipe.scheduler.config,
@@ -184,16 +196,9 @@ class BackgroundUpdater:
             compel = Compel(tokenizer=self.pipe.tokenizer, text_encoder=self.pipe.text_encoder)
             conditioning = compel(prompt)
 
-            negative_prompt = (
-                "ugly++, distorted++, deformed++, blurry++, nsfw+++,"
-                "(worst quality)++, (low quality)++, "
-                "watermark, signature, text, logo, copyright, "
-                "noisy, grainy, artifacts, "
-                "oversaturated, overexposed, high contrast, "
-            )
-            negative_conditioning = compel(negative_prompt)
+            negative_conditioning = compel(self.config.prompts['negative_prompt'])
             [conditioning, negative_conditioning] = compel.pad_conditioning_tensors_to_same_length([conditioning, negative_conditioning])
-            
+                        
             # Generate image
             image = self.pipe(
                 prompt_embeds=conditioning,
