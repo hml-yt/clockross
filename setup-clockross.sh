@@ -84,9 +84,10 @@ User=$SUDO_USER
 WorkingDirectory=$INSTALL_DIR
 Environment=DISPLAY=:0
 Environment=XAUTHORITY=/home/$SUDO_USER/.Xauthority
+ExecStartPre=/bin/bash -c "/usr/bin/X :0 -quiet &"
 ExecStart=$INSTALL_DIR/venv/bin/python main.py
 Restart=always
-RestartSec=3
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
