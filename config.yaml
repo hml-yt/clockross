@@ -13,7 +13,7 @@ render:
   height: 360
   background_color: [60, 60, 60]
   clip_skip: 0
-  background_darkness_variation: 0.2
+  background_darkness_variation: 0.1
   checkpoint: models/revAnimated_v2Rebirth.safetensors
   checkpoints:
     - models/abstractPhoto_abcevereMix.safetensors
@@ -21,7 +21,7 @@ render:
   contrast_levels: {
     "High": [30, 30, 30],
     "Medium": [60, 60, 60],
-    "Low": [90, 90, 90]
+    "Low": [75, 75, 75]
   }
   models:
     vae: stabilityai/sd-vae-ft-mse

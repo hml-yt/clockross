@@ -38,27 +38,39 @@ class Config:
         """Reload configuration from files"""
         self._load_config()
     
-    def update(self, section, key, value):
-        """Update a configuration value in local_config.yaml"""
-        # Ensure section exists in local config
-        if section not in self._local_config:
-            self._local_config[section] = {}
-        
-        # Update the value
-        self._local_config[section][key] = value
+    def update(self, *keys, value):
+        """Update a configuration value in local_config.yaml at any nesting level"""
+        if len(keys) < 1:
+            raise ValueError("At least one key must be provided")
+            
+        current = self._local_config
+        # Navigate to the deepest dict, creating paths as needed
+        for key in keys[:-1]:
+            if key not in current:
+                current[key] = {}
+            elif not isinstance(current[key], dict):
+                current[key] = {}
+            current = current[key]
+            
+        # Set the final value
+        current[keys[-1]] = value
         self.save_local()
         return True
     
     def get(self, *keys, default=None):
         """Get a nested configuration value using dot notation, checking local overrides first"""
         # Try local config first
-        value = self._local_config
+        local_value = self._local_config
         for key in keys:
             try:
-                value = value[key]
-                return value  # If found in local config, return it
+                local_value = local_value[key]
             except (KeyError, TypeError):
-                pass
+                local_value = None
+                break
+                
+        # If we found a complete path in local config, return it
+        if local_value is not None:
+            return local_value
         
         # Fall back to base config
         value = self._base_config
