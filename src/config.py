@@ -18,79 +18,50 @@ class Config:
             raise FileNotFoundError("config.yaml not found in the current directory")
         
         with open(config_path, 'r') as f:
-            self._config = yaml.safe_load(f)
+            self._base_config = yaml.safe_load(f)
             
-        # Load dynamic settings if they exist
-        dynamic_path = Path('local_config.yaml')
-        if dynamic_path.exists():
-            with open(dynamic_path, 'r') as f:
-                self._dynamic = yaml.safe_load(f)
+        # Load local overrides if they exist
+        local_path = Path('local_config.yaml')
+        if local_path.exists():
+            with open(local_path, 'r') as f:
+                self._local_config = yaml.safe_load(f) or {}
         else:
-            # Initialize dynamic settings with values from base config
-            self._dynamic = {
-                'clock': {
-                    'use_numbers': self._config['clock']['use_numbers']
-                },
-                'render': {
-                    'background_color': self._config['display']['background_color'],
-                    'checkpoint': self._config['render']['checkpoint']
-                },
-                'prompts': {
-                    'enabled_styles': self._config['prompts']['enabled_styles']
-                }
-            }
-            self.save_dynamic()
+            self._local_config = {}
     
-    def save(self):
-        """Save current base configuration to file"""
-        config_path = Path('config.yaml')
-        with open(config_path, 'w') as f:
-            yaml.dump(self._config, f, default_flow_style=False, sort_keys=False)
-    
-    def save_dynamic(self):
-        """Save dynamic settings to separate file"""
-        dynamic_path = Path('local_config.yaml')
-        with open(dynamic_path, 'w') as f:
-            yaml.dump(self._dynamic, f, default_flow_style=False, sort_keys=False)
+    def save_local(self):
+        """Save local configuration overrides to local_config.yaml"""
+        local_path = Path('local_config.yaml')
+        with open(local_path, 'w') as f:
+            yaml.dump(self._local_config, f, default_flow_style=False, sort_keys=False)
     
     def reload(self):
         """Reload configuration from files"""
         self._load_config()
     
     def update(self, section, key, value):
-        """Update a configuration value and save to appropriate file"""
-        # Always save display_mode to dynamic settings
-        if section == 'clock' and key == 'display_mode':
-            if 'clock' not in self._dynamic:
-                self._dynamic['clock'] = {}
-            self._dynamic['clock']['display_mode'] = value
-            self.save_dynamic()
-            return True
-        # Check if this is a dynamic setting
-        if section in self._dynamic and key in self._dynamic[section]:
-            self._dynamic[section][key] = value
-            self.save_dynamic()
-            return True
-        # Fall back to base config
-        elif section in self._config and key in self._config[section]:
-            self._config[section][key] = value
-            self.save()
-            return True
-        return False
+        """Update a configuration value in local_config.yaml"""
+        # Ensure section exists in local config
+        if section not in self._local_config:
+            self._local_config[section] = {}
+        
+        # Update the value
+        self._local_config[section][key] = value
+        self.save_local()
+        return True
     
     def get(self, *keys, default=None):
-        """Get a nested configuration value using dot notation, checking dynamic settings first"""
-        # Try dynamic settings first
-        value = self._dynamic
+        """Get a nested configuration value using dot notation, checking local overrides first"""
+        # Try local config first
+        value = self._local_config
         for key in keys:
             try:
                 value = value[key]
-                return value  # If found in dynamic settings, return it
+                return value  # If found in local config, return it
             except (KeyError, TypeError):
                 pass
         
         # Fall back to base config
-        value = self._config
+        value = self._base_config
         for key in keys:
             try:
                 value = value[key]
@@ -98,55 +69,37 @@ class Config:
                 return default
         return value
     
+    def _merge_config_section(self, section_name):
+        """Helper to merge a config section with its local overrides"""
+        base = self._base_config.get(section_name, {}).copy()
+        local = self._local_config.get(section_name, {})
+        base.update(local)
+        return base
+    
     @property
     def display(self):
-        return self._config['display']
+        return self._merge_config_section('display')
     
     @property
     def render(self):
-        # Merge base and dynamic render settings
-        render_config = dict(self._config.get('render', {}))
-        dynamic_render = self._dynamic.get('render', {})
-        
-        # Special handling for models to preserve all model paths
-        if 'models' in dynamic_render:
-            render_config['models'] = {
-                **self._config.get('render', {}).get('models', {}),
-                **dynamic_render.get('models', {})
-            }
-        
-        # Merge other render settings
-        for key, value in dynamic_render.items():
-            if key != 'models':
-                render_config[key] = value
-                
-        return render_config
+        return self._merge_config_section('render')
     
     @property
     def clock(self):
-        # Merge base and dynamic clock settings
-        base_clock = self._config['clock'].copy()
-        # Get display_mode from dynamic settings if it exists, otherwise use default from base config
-        if 'clock' in self._dynamic:
-            base_clock.update(self._dynamic['clock'])
-        return base_clock
+        return self._merge_config_section('clock')
     
     @property
     def animation(self):
-        return self._config['animation']
+        return self._merge_config_section('animation')
     
     @property
     def enhancement(self):
-        return self._config['enhancement']
+        return self._merge_config_section('enhancement')
         
     @property
     def system(self):
-        return self._config['system']
+        return self._merge_config_section('system')
         
     @property
     def prompts(self):
-        # Merge base and dynamic prompt settings
-        base_prompts = self._config['prompts'].copy()
-        if 'prompts' in self._dynamic:
-            base_prompts.update(self._dynamic['prompts'])
-        return base_prompts 
+        return self._merge_config_section('prompts') 

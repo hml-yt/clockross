@@ -212,12 +212,8 @@ class SettingsUI:
         # Get available models
         self.available_models = self._get_available_models()
 
-        # Define contrast levels
-        self.contrast_levels = {
-            'High': [30, 30, 30],
-            'Medium': [60, 60, 60],
-            'Low': [90, 90, 90]
-        }
+        # Get contrast levels from config
+        self.contrast_levels = self.config.render['contrast_levels']
         
         # Define settings
         self.settings = [
@@ -235,10 +231,10 @@ class SettingsUI:
                 'value': self.config.clock['use_numbers']
             },
             {
-                'name': 'Contrast',
+                'name': 'Render Contrast',
                 'key': ('render', 'background_color'),
                 'type': 'select',
-                'value': 'Medium',  # Default to medium
+                'value': next(k for k, v in self.contrast_levels.items() if v == self.config.render['background_color']),  # Get current contrast level
                 'options': list(self.contrast_levels.keys())
             },
             {
