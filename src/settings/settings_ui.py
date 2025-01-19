@@ -20,6 +20,7 @@ class Dialog:
         self.message = ""
         self.title = ""
         self.callback = None
+        self.settings_ui = None  # Reference to settings UI for checking pipeline loading state
         
     def show_confirmation(self, title, message, callback):
         """Show a confirmation dialog with Yes/No buttons"""
@@ -97,8 +98,8 @@ class Dialog:
         # Handle auto-hide for notifications
         if self.duration is not None:
             current_time = time.time()
-            # Only check duration if not loading pipeline
-            if not hasattr(self, 'settings_ui') or not self.settings_ui.is_loading_pipeline:
+            # Only check duration if not loading pipeline or if duration is None
+            if not hasattr(self, 'settings_ui') or not self.settings_ui.is_loading_pipeline or self.duration is None:
                 if current_time - self.start_time > self.duration:
                     self.visible = False
                     return
@@ -107,7 +108,7 @@ class Dialog:
         if not self.buttons:
             # Calculate fade out alpha for notifications
             alpha = 255
-            if not hasattr(self, 'settings_ui') or not self.settings_ui.is_loading_pipeline:
+            if not hasattr(self, 'settings_ui') or not self.settings_ui.is_loading_pipeline or self.duration is None:
                 alpha = int(255 * (1 - (time.time() - self.start_time) / self.duration))
             
             # Draw notification with wider width
@@ -225,16 +226,20 @@ class SettingsUI:
             },
             {
                 'name': 'Background Color',
-                'key': ('api', 'background_color'),
-                'type': 'color',
-                'value': self.config.api['background_color']
+                'key': ('render', 'background_color'),
+                'type': 'color_picker',
+                'label': 'Background Color',
+                'description': 'Base color for clock face',
+                'value': self.config.render['background_color']
             },
             {
                 'name': 'Model Checkpoint',
-                'key': ('api', 'checkpoint'),
-                'type': 'select',
-                'value': self.config.api['checkpoint'],
-                'options': self.config.api['checkpoints']
+                'key': ('render', 'checkpoint'),
+                'type': 'dropdown',
+                'label': 'Model',
+                'description': 'Stable Diffusion model to use',
+                'value': self.config.render['checkpoint'],
+                'options': self.config.render['checkpoints']
             },
             {
                 'name': 'Save snapshot',
@@ -261,7 +266,7 @@ class SettingsUI:
                 # Show notifications after a slight delay to ensure settings is hidden
                 pygame.time.wait(100)  # Short delay
                 self.is_loading_pipeline = True
-                self.dialog.show_notification(f"Loading checkpoint: {self.config.api['checkpoint'].split('_')[0]}...", duration=30)  # Long duration
+                self.dialog.show_notification(f"Loading checkpoint: {self.config.render['checkpoint'].split('_')[0]}...", duration=30)  # Long duration
                 def on_pipeline_loaded():
                     self.is_loading_pipeline = False
                 self.background_updater.reload_pipeline(complete_callback=on_pipeline_loaded)  # Reload with callback
@@ -271,123 +276,76 @@ class SettingsUI:
         self.visible = True
     
     def handle_click(self, pos):
-        """Handle mouse click at the given position"""
+        """Handle click events in the settings UI"""
         if not self.visible:
             return False
             
-        # Let dialog handle clicks first if visible
-        if self.dialog.visible:
-            return self.dialog.handle_click(pos)
-            
-        # Check if click is outside panel
-        if not (self.panel_x <= pos[0] <= self.panel_x + self.panel_width and
-                self.panel_y <= pos[1] <= self.panel_y + self.panel_height):
+        # Check if click is outside the settings panel
+        panel_x = (self.screen_width - self.panel_width) // 2
+        panel_y = (self.screen_height - self.panel_height) // 2
+        
+        if not (panel_x <= pos[0] <= panel_x + self.panel_width and
+                panel_y <= pos[1] <= panel_y + self.panel_height):
             self.visible = False
-            if self.checkpoint_changed and self.background_updater:
-                # Show notifications after a slight delay to ensure settings is hidden
-                pygame.time.wait(100)  # Short delay
-                self.is_loading_pipeline = True
-                self.dialog.show_notification(f"Loading checkpoint: {self.config.api['checkpoint'].split('_')[0]}...", duration=30)  # Long duration
-                def on_pipeline_loaded():
-                    self.is_loading_pipeline = False
-                self.background_updater.reload_pipeline(complete_callback=on_pipeline_loaded)  # Reload with callback
-                self.background_updater.last_attempt = 0  # Force update
-                self.checkpoint_changed = False
             return True
             
-        # Calculate which setting was clicked
-        relative_y = pos[1] - self.panel_y - self.padding
-        index = int(relative_y // self.item_height)
-        
-        if 0 <= index < len(self.settings):
-            setting = self.settings[index]
-            if setting['type'] == 'action' and setting['action'] == 'snapshot':
-                print("Taking snapshot")
-                self.take_screenshot()
+        # Handle setting changes
+        for i, setting in enumerate(self.settings):
+            item_y = panel_y + self.padding + i * self.item_height
+            item_rect = pygame.Rect(panel_x + self.padding, item_y, self.panel_width - 2 * self.padding, self.item_height)
+            
+            if item_rect.collidepoint(pos[0], pos[1]):
+                if setting['type'] == 'select':
+                    current_value = setting['value']
+                    current_index = setting['options'].index(current_value)
+                    next_index = (current_index + 1) % len(setting['options'])
+                    setting['value'] = setting['options'][next_index]
+                    
+                    # Update config
+                    section, key = setting['key']
+                    self.config.update(section, key, setting['value'])
+                    
+                    # Special handling for checkpoint change
+                    if section == 'render' and key == 'checkpoint':
+                        self.visible = False  # Close settings dialog
+                        self.dialog.show_notification("Loading new checkpoint...", duration=None)  # Show loading notification
+                        self.is_loading_pipeline = True
+                        self.background_updater.reload_pipeline(complete_callback=self.on_pipeline_loaded)
+                    
+                elif setting['type'] == 'bool':
+                    setting['value'] = not setting['value']
+                    section, key = setting['key']
+                    self.config.update(section, key, setting['value'])
+                    
+                elif setting['type'] == 'action' and setting['action'] == 'snapshot':
+                    self.visible = False  # Close settings dialog
+                    self.dialog.show_notification("Saving snapshot...", duration=2)  # Show saving notification
+                    self.take_screenshot()
+                    
+                elif setting['type'] == 'system_row':
+                    option_width = (self.panel_width - 3 * self.padding) // 2
+                    shutdown_rect = pygame.Rect(panel_x + self.padding, item_y, option_width, self.item_height)
+                    restart_rect = pygame.Rect(panel_x + self.panel_width - self.padding - option_width, item_y, option_width, self.item_height)
+                    
+                    if shutdown_rect.collidepoint(pos[0], pos[1]):
+                        self.dialog.show_confirmation("Shutdown", "Are you sure you want to shutdown?", handle_shutdown)
+                    elif restart_rect.collidepoint(pos[0], pos[1]):
+                        self.dialog.show_confirmation("Restart", "Are you sure you want to restart?", handle_restart)
+                
                 return True
-            elif setting['type'] == 'system_row':
-                # Calculate button positions exactly as drawn
-                button_width = (self.panel_width - 3 * self.padding) // 2
-                button_height = self.item_height - 10
-                button_y = self.panel_y + self.padding + index * self.item_height + 5
-                
-                # Check shutdown button
-                shutdown_rect = pygame.Rect(
-                    self.panel_x + self.padding,
-                    button_y,
-                    button_width,
-                    button_height
-                )
-                if shutdown_rect.collidepoint(pos[0], pos[1]):
-                    def handle_shutdown(confirmed):
-                        if confirmed:
-                            os.system(self.config.system["shutdown_cmd"])
-                    self.dialog.show_confirmation("Confirm Shutdown", "Are you sure?", handle_shutdown)
-                    return True
-                
-                # Check restart button
-                restart_rect = pygame.Rect(
-                    self.panel_x + self.padding * 2 + button_width,
-                    button_y,
-                    button_width,
-                    button_height
-                )
-                if restart_rect.collidepoint(pos[0], pos[1]):
-                    def handle_restart(confirmed):
-                        if confirmed:
-                            os.system(self.config.system["restart_cmd"])
-                    self.dialog.show_confirmation("Confirm Restart", "Are you sure?", handle_restart)
-                    return True
-            elif setting['type'] == 'bool':
-                # Toggle boolean value
-                setting['value'] = not setting['value']
-                # Update config
-                self.config.update(setting['key'][0], setting['key'][1], setting['value'])
-                # Force background update if it was the use_numbers setting
-                if setting['key'][1] == 'use_numbers' and self.background_updater:
-                    self.background_updater.last_attempt = 0  # Force update
-            elif setting['type'] == 'color':
-                # Cycle through some preset colors
-                presets = [(25, 25, 25), (40, 40, 40), (75, 75, 75)]
-                current = tuple(setting['value'])
-                next_index = (presets.index(current) + 1) % len(presets) if current in presets else 0
-                setting['value'] = list(presets[next_index])
-                # Update config
-                self.config.update(setting['key'][0], setting['key'][1], setting['value'])
-                # Force background update if it was the background color setting
-                if setting['key'][1] == 'background_color' and self.background_updater:
-                    self.background_updater.last_attempt = 0  # Force update
-            elif setting['type'] == 'select':
-                # Cycle through options
-                current_index = setting['options'].index(setting['value'])
-                next_index = (current_index + 1) % len(setting['options'])
-                setting['value'] = setting['options'][next_index]
-                
-                # Handle random font selection
-                if setting['key'][1] == 'font':
-                    if setting['value'] == 'Random':
-                        random_font = random.choice(self.font_options)
-                        self.config.update(setting['key'][0], setting['key'][1], random_font)
-                    else:
-                        self.config.update(setting['key'][0], setting['key'][1], setting['value'])
-                    # Update the clock face font
-                    if self.clock_face:
-                        self.clock_face.update_font()
-                else:
-                    self.config.update(setting['key'][0], setting['key'][1], setting['value'])
-                    # Mark checkpoint as changed if it was the checkpoint setting
-                    if setting['key'][1] == 'checkpoint':
-                        self.checkpoint_changed = True
-                        self.dialog.show_notification(f"Selected checkpoint: {setting['value'].split('_')[0]}")
         
         return True
-    
+
+    def on_pipeline_loaded(self):
+        """Callback when pipeline has finished loading"""
+        self.is_loading_pipeline = False
+        self.dialog.show_notification("New checkpoint loaded", duration=2)
+
     def take_screenshot(self):
-        """Take screenshots of the clock face, hands, and save API request"""
+        """Take screenshots of the clock face, hands, and save render request"""
         if not self.surface_manager:
             return
         self.surface_manager.save_snapshot()
-        self.dialog.show_notification("Snapshot Saved!")
 
     def draw(self, surface):
         """Draw the settings UI if visible"""
@@ -459,13 +417,18 @@ class SettingsUI:
                 if setting['type'] == 'bool':
                     value_text = "On" if setting['value'] else "Off"
                     color = self.active_color if setting['value'] else self.text_color
-                elif setting['type'] == 'color':
+                elif setting['type'] == 'color_picker':
                     value_text = f"RGB{tuple(setting['value'])}"
                     color = self.text_color
-                elif setting['type'] == 'select':
+                elif setting['type'] == 'dropdown':
                     # Show shortened version of the checkpoint name
                     value_text = setting['value'].split('_')[0]
                     color = self.active_color
+                elif setting['type'] == 'select':
+                    value_text = setting['value']
+                    color = self.active_color
+                else:
+                    continue  # Skip rendering value for other types
                 
                 value_surface = self.font.render(value_text, True, color)
                 value_x = self.panel_width - value_surface.get_width() - self.padding

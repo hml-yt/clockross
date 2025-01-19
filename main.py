@@ -19,8 +19,8 @@ FULLSCREEN_WIDTH = display_info.current_w
 FULLSCREEN_HEIGHT = display_info.current_h
 WINDOWED_WIDTH = config.display['windowed_width']
 WINDOWED_HEIGHT = config.display['windowed_height']
-API_WIDTH = config.api['width']
-API_HEIGHT = config.api['height']
+RENDER_WIDTH = config.render['width']
+RENDER_HEIGHT = config.render['height']
 BACKGROUND_COLOR = tuple(config.display['background_color'])
 
 def parse_args():
@@ -45,11 +45,11 @@ def main():
     
     # Initialize components
     clock = pygame.time.Clock()
-    # Use API dimensions for the clock face that will be sent to the API
-    api_clock_face = ClockFace(API_WIDTH, API_HEIGHT)
+    # Use render dimensions for the clock face that will be used for background generation
+    render_clock_face = ClockFace(RENDER_WIDTH, RENDER_HEIGHT)
     # Use display dimensions for the actual display clock face
     display_clock_face = ClockFace(display_width, display_height)
-    surface_manager = SurfaceManager(display_width, display_height, API_WIDTH, API_HEIGHT, debug=debug)
+    surface_manager = SurfaceManager(display_width, display_height, RENDER_WIDTH, RENDER_HEIGHT, debug=debug)
     background_updater = BackgroundUpdater(debug=debug)
     background_updater.set_surface_manager(surface_manager)
     settings_ui = SettingsUI(display_width, display_height, background_updater, surface_manager)
@@ -59,7 +59,7 @@ def main():
     
     # Force initial update
     now = datetime.now()
-    hands_surface = api_clock_face.draw_clock_hands(now.hour, now.minute)
+    hands_surface = render_clock_face.draw_clock_hands(now.hour, now.minute)
     hands_base64 = surface_manager.update_hands(hands_surface)
     background_updater.update_background(hands_base64)
     
@@ -83,9 +83,9 @@ def main():
         now = datetime.now()
         hours, minutes, seconds = now.hour, now.minute, now.second
         
-        # Draw clock hands (for API only)
+        # Draw clock hands (for rendering)
         if background_updater.should_update():
-            hands_surface = api_clock_face.draw_clock_hands(hours, minutes)
+            hands_surface = render_clock_face.draw_clock_hands(hours, minutes)
             hands_base64 = surface_manager.update_hands(hands_surface)
             background_updater.update_background(hands_base64)
         

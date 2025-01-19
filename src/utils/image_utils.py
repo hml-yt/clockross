@@ -13,7 +13,7 @@ def save_debug_image(image, prefix):
     
     Args:
         image: Either a pygame Surface or PIL Image
-        prefix: String prefix for the filename (e.g., 'preapi' or 'background')
+        prefix: String prefix for the filename (e.g., 'prerender' or 'background')
     """
     timestamp = datetime.now().strftime("%H%M%S")
     os.makedirs("debug", exist_ok=True)
@@ -40,13 +40,13 @@ def surface_to_base64(surface, debug=False):
     pil_image = Image.frombytes('RGBA', surface.get_size(), string_image)
     
     # Convert to RGB with white on black background
-    # This ensures the API gets a clean black and white image
+    # This ensures the renderer gets a clean black and white image
     rgb_image = Image.new('RGB', pil_image.size, (0, 0, 0))
     rgb_image.paste(pil_image, mask=pil_image.split()[3])  # Use alpha as mask
     
     # Save debug image if requested
     if debug:
-        save_debug_image(rgb_image, "preapi")
+        save_debug_image(rgb_image, "prerender")
     
     # Convert to base64
     buffered = BytesIO()
@@ -85,6 +85,24 @@ def cv2_to_surface(cv2_image):
     """Convert CV2 image to pygame surface"""
     rgb_image = cv2.cvtColor(cv2_image, cv2.COLOR_BGR2RGB)
     return pygame.surfarray.make_surface(rgb_image.swapaxes(0, 1))
+
+def get_dominant_color(surface):
+    """Extract the brightest color from a pygame surface.
+    
+    Args:
+        surface: Pygame surface to analyze
+        
+    Returns:
+        Tuple of (R,G,B) representing the brightest color
+    """
+    # Convert surface to array
+    arr = pygame.surfarray.array3d(surface)
+    # Resize to speed up processing
+    arr = arr[::4, ::4]
+    # Find brightest pixel
+    brightest_idx = np.argmax(np.sum(arr, axis=2))
+    brightest_pixel = arr.reshape(-1, 3)[brightest_idx]
+    return tuple(brightest_pixel)
 
 def morph_transition(prev_frame, next_frame, progress):
     """Create a morphed transition between two frames using optical flow.

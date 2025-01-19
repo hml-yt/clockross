@@ -6,7 +6,7 @@ display:
   - 70
   - 70
   - 70
-api:
+render:
   width: 640
   height: 360
   background_darkness_variation: 0.2
@@ -21,8 +21,8 @@ api:
     num_inference_steps: 12
     guidance_scale: 7
     controlnet_conditioning_scale: 1.0
-    control_guidance_start: 0.1
-    control_guidance_end: 0.8
+    control_guidance_start: 0.05
+    control_guidance_end: 0.9
 system:
   shutdown_cmd: sudo /sbin/shutdown -h now
   restart_cmd: sudo /sbin/shutdown -r now

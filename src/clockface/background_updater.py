@@ -10,7 +10,7 @@ import threading
 from diffusers import AutoencoderKL, ControlNetModel, StableDiffusionControlNetPipeline, DPMSolverMultistepScheduler
 from diffusers.schedulers import AysSchedules
 from .prompt_generator import PromptGenerator
-from ..utils import save_debug_image
+from ..utils.image_utils import save_debug_image
 from ..config import Config
 import random
 import os
@@ -71,13 +71,13 @@ class BackgroundUpdater:
         """Load the pipeline with current configuration"""
         # Load VAE
         vae = AutoencoderKL.from_single_file(
-            self.config.api['models']['vae'],
+            self.config.render['models']['vae'],
             torch_dtype=torch.float16
         ).to('cuda')
         
         # Load ControlNet
         controlnet = ControlNetModel.from_single_file(
-            self.config.api['models']['controlnet'],
+            self.config.render['models']['controlnet'],
             torch_dtype=torch.float16
         ).to('cuda')
         
@@ -87,7 +87,7 @@ class BackgroundUpdater:
         
         # Load main model
         self.pipe = StableDiffusionControlNetPipeline.from_single_file(
-            self.config.api['checkpoint'],
+            self.config.render['checkpoint'],
             controlnet=controlnet,
             torch_dtype=torch.float16,
             safety_checker=None,
@@ -175,7 +175,7 @@ class BackgroundUpdater:
                 print(f"\nGenerating image with prompt: {prompt}")
             
             # Get generation settings from config
-            gen_config = self.config.api['generation']
+            gen_config = self.config.render['generation']
             
             # Generate random seed
             seed = random.randint(0, 2**32 - 1)
@@ -185,8 +185,8 @@ class BackgroundUpdater:
             image = self.pipe(
                 prompt,
                 image=source_image,
-                height=self.config.api['height'],
-                width=self.config.api['width'],
+                height=self.config.render['height'],
+                width=self.config.render['width'],
                 negative_prompt="asian, (worst quality, low quality:1.4), watermark, signature, flower, facial marking, (women:1.2), (female:1.2), blue jeans, 3d, render, doll, plastic, blur, haze, monochrome, b&w, text, (ugly:1.2), unclear eyes, no arms, bad anatomy, cropped, censoring, asymmetric eyes, bad anatomy, bad proportions, cropped, cross-eyed, deformed, extra arms, extra fingers, extra limbs, fused fingers, jpeg artifacts, malformed, mangled hands, misshapen body, missing arms, missing fingers, missing hands, missing legs, poorly drawn, tentacle finger, too many arms, too many fingers, (worst quality, low quality:1.4), watermark, signature,illustration,painting, anime,cartoon",
                 controlnet_conditioning_scale=gen_config['controlnet_conditioning_scale'],
                 num_inference_steps=gen_config['num_inference_steps'],
@@ -204,14 +204,14 @@ class BackgroundUpdater:
             metadata = {
                 "prompt": prompt,
                 "seed": seed,
-                "checkpoint": os.path.basename(self.config.api['checkpoint']),
+                "checkpoint": os.path.basename(self.config.render['checkpoint']),
                 "timestamp": datetime.now().isoformat(),
                 "generation_config": gen_config
             }
             
-            # Update API request in surface manager
+            # Update render request in surface manager
             if self.surface_manager:
-                self.surface_manager.update_api_request(metadata)
+                self.surface_manager.update_render_request(metadata)
             
             return image
             
@@ -228,10 +228,11 @@ class BackgroundUpdater:
                     # Store the current color as previous for transition
                     self.previous_color = self.current_color
                     self.current_color = self._extract_dominant_color(new_bg)
+                    self.transition_start = time.time()
                     
                     # Update background in surface manager
                     if self.surface_manager:
-                        self.surface_manager.update_background(new_bg, self.transition_duration)
+                        self.surface_manager.update_background(new_bg)
                     
                     if self.debug:
                         print(f"Background updated at {datetime.now().strftime('%H:%M:%S')}")

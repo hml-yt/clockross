@@ -43,7 +43,7 @@ class PromptGenerator:
         pass
         
     def generate(self):
-        """Generate a random prompt for the Stable Diffusion API"""
+        """Generate a random prompt for the Stable Diffusion renderer"""
         prompt = generate_prompt()
         print(f"\nGenerated prompt: {prompt}")
         return prompt 

@@ -13,94 +13,118 @@ from ..utils.image_utils import (
     scale_pil_image_to_display,
     pil_to_cv2,
     cv2_to_surface,
-    morph_transition
+    morph_transition,
+    save_debug_image
 )
+from ..config import Config
 
 class SurfaceManager:
-    def __init__(self, display_width, display_height, api_width, api_height, debug=False):
+    """Manages the various surfaces used in the clock display"""
+    
+    def __init__(self, display_width, display_height, render_width, render_height, debug=False):
+        """Initialize the surface manager"""
+        self.config = Config()
         self.display_width = display_width
         self.display_height = display_height
-        self.api_width = api_width
-        self.api_height = api_height
+        self.render_width = render_width
+        self.render_height = render_height
         self.debug = debug
         
-        # Clock surfaces
+        # Initialize surfaces
         self.hands_surface = None
-        self.hands_base64 = None
+        self.background_surface = None
+        self.prev_background = None
+        self.transition_progress = 0.0
         
-        # Background surfaces
-        self.current_background = None
-        self.previous_background = None
-        self.transition_start = 0
-        self.transition_duration = 1.0  # Will be updated from config
-        
-        # API state
-        self.last_api_request = None
+        # Render state
+        self.last_render_request = None
         
         # Create snapshots directory
         self.snapshots_dir = "snapshots"
         os.makedirs(self.snapshots_dir, exist_ok=True)
     
-    def update_hands(self, hands_surface):
-        """Update the clock hands surface and its base64 representation"""
-        self.hands_surface = hands_surface
-        self.hands_base64 = surface_to_base64(hands_surface, self.debug)
-        return self.hands_base64
+    def update_hands(self, surface):
+        """Update the hands surface and return base64 encoded PNG"""
+        self.hands_surface = surface
+        return surface_to_base64(surface, self.debug)
     
-    def update_background(self, new_background, transition_duration):
-        """Update the background with transition state"""
-        self.transition_duration = transition_duration
-        if self.current_background:
-            self.previous_background = self.current_background
-        self.current_background = new_background
-        self.transition_start = time.time()
-    
-    def get_background_state(self):
-        """Get current background state including transition progress"""
-        if not self.current_background:
-            return None, None, 1.0
-            
-        progress = min(1.0, (time.time() - self.transition_start) / self.transition_duration)
-        return self.current_background, self.previous_background, progress
+    def update_background(self, image_data):
+        """Update the background surface with new image data"""
+        # Save previous background for transitions
+        if self.background_surface:
+            self.prev_background = self.background_surface
+            self.transition_progress = 0.0
+        
+        # Convert PIL Image to pygame surface
+        mode = image_data.mode
+        size = image_data.size
+        data = image_data.tobytes()
+        self.background_surface = pygame.image.fromstring(data, size, mode)
+        
+        if self.debug:
+            save_debug_image(pygame.surfarray.array3d(self.background_surface), "background")
     
     def get_display_background(self):
-        """Get the background scaled and processed for display"""
-        background_info = self.get_background_state()
-        if not background_info[0]:  # If no current background
+        """Get the current background surface, handling transitions"""
+        if not self.background_surface:
             if not self.hands_surface:
                 return None
             # Show clock hands until first background is received
-            return pygame.transform.smoothscale(self.hands_surface, (self.display_width, self.display_height))
-        
-        current_bg, prev_bg, progress = background_info
-        
-        # Scale current background
-        scaled_current = scale_pil_image_to_display(current_bg, self.display_width, self.display_height)
-        
-        if prev_bg and progress < 1.0:
-            # Scale previous background
-            scaled_prev = scale_pil_image_to_display(prev_bg, self.display_width, self.display_height)
+            return pygame.transform.scale(self.hands_surface, (self.display_width, self.display_height))
             
-            # Convert to CV2 format for morphing
-            cv2_current = pil_to_cv2(scaled_current)
-            cv2_prev = pil_to_cv2(scaled_prev)
+        # Handle transitions
+        if self.prev_background and self.transition_progress < 1.0:
+            # Update transition progress based on config duration
+            fps = self.config.display['fps']
+            duration = self.config.animation['transition_duration']
+            self.transition_progress += 1.0 / (fps * duration)
+            self.transition_progress = min(1.0, self.transition_progress)
             
-            # Create morphed transition
-            morphed = morph_transition(cv2_prev, cv2_current, progress)
+            # Create transition surface
+            transition = pygame.Surface((self.display_width, self.display_height))
             
-            # Convert back to pygame surface
-            return cv2_to_surface(morphed)
+            # Draw previous and current backgrounds
+            transition.blit(pygame.transform.scale(self.prev_background, (self.display_width, self.display_height)), (0, 0))
+            current = pygame.transform.scale(self.background_surface, (self.display_width, self.display_height))
+            
+            # Set alpha for current background
+            current.set_alpha(int(255 * self.transition_progress))
+            
+            # Blend backgrounds
+            transition.blit(current, (0, 0))
+            return transition
         else:
-            # Just return current background
-            return pygame.image.fromstring(
-                scaled_current.tobytes(),
-                scaled_current.size,
-                scaled_current.mode
-            )
+            # Return scaled background
+            return pygame.transform.scale(self.background_surface, (self.display_width, self.display_height))
     
-    def update_api_request(self, api_request):
-        """Update the last API request"""
-        self.last_api_request = api_request
+    def update_render_request(self, render_request):
+        """Update the last render request"""
+        self.last_render_request = render_request
+    
+    def save_metadata(self, index):
+        """Save metadata about the current state"""
+        metadata = {
+            "index": index,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        # Save render request if available
+        if self.last_render_request:
+            metadata.update({
+                "prompt": self.last_render_request["prompt"],
+                "seed": self.last_render_request["seed"],
+                "checkpoint": self.last_render_request["checkpoint"],
+                "timestamp": self.last_render_request["timestamp"],
+                "generation_config": {
+                    "controlnet_conditioning_scale": self.last_render_request["generation_config"]["controlnet_conditioning_scale"],
+                    "num_inference_steps": self.last_render_request["generation_config"]["num_inference_steps"],
+                    "guidance_scale": self.last_render_request["generation_config"]["guidance_scale"],
+                    "control_guidance_start": self.last_render_request["generation_config"]["control_guidance_start"],
+                    "control_guidance_end": self.last_render_request["generation_config"]["control_guidance_end"]
+                }
+            })
+        
+        return metadata
     
     def save_snapshot(self):
         """Save all current surfaces and state to snapshot files"""
@@ -112,30 +136,14 @@ class SurfaceManager:
         # Save clock face
         pygame.image.save(self.hands_surface, f"{self.snapshots_dir}/{timestamp}_1_clock.png")
         
-        # Save API request if available
-        if self.last_api_request:
-            # Create a more readable metadata file
-            metadata = {
-                "prompt": self.last_api_request["prompt"],
-                "seed": self.last_api_request["seed"],
-                "checkpoint": self.last_api_request["checkpoint"],
-                "timestamp": self.last_api_request["timestamp"],
-                "generation_settings": {
-                    "controlnet_conditioning_scale": self.last_api_request["generation_config"]["controlnet_conditioning_scale"],
-                    "num_inference_steps": self.last_api_request["generation_config"]["num_inference_steps"],
-                    "guidance_scale": self.last_api_request["generation_config"]["guidance_scale"],
-                    "control_guidance_start": self.last_api_request["generation_config"]["control_guidance_start"],
-                    "control_guidance_end": self.last_api_request["generation_config"]["control_guidance_end"]
-                }
-            }
-            
-            # Save metadata
-            with open(f"{self.snapshots_dir}/{timestamp}_2_metadata.json", 'w') as f:
-                json.dump(metadata, f, indent=2)
-            
-            if self.debug:
-                print(f"Saved metadata with seed {metadata['seed']} and checkpoint {metadata['checkpoint']}")
+        # Save metadata
+        metadata = self.save_metadata(0)
+        with open(f"{self.snapshots_dir}/{timestamp}_2_metadata.json", 'w') as f:
+            json.dump(metadata, f, indent=2)
+        
+        if self.debug:
+            print(f"Saved metadata with seed {metadata['seed']} and checkpoint {metadata['checkpoint']}")
         
         # Save current background if available
-        if self.current_background:
-            self.current_background.save(f"{self.snapshots_dir}/{timestamp}_3_background.png") 
+        if self.background_surface:
+            pygame.image.save(self.background_surface, f"{self.snapshots_dir}/{timestamp}_3_background.png") 

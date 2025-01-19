@@ -37,7 +37,7 @@ class ClockFace:
         self.transparent_white = (255, 255, 255, self.config.clock['overlay_opacity'])
         
         # Create surfaces
-        self.api_surface = pygame.Surface((width, height), pygame.SRCALPHA)
+        self.render_surface = pygame.Surface((width, height), pygame.SRCALPHA)
         self.overlay_surface = pygame.Surface((width, height), pygame.SRCALPHA)
         
         # Initialize font for numbers
@@ -48,8 +48,8 @@ class ClockFace:
 
     def _update_background_color(self):
         """Update background color with random darkness variation"""
-        base_color = self.config.api['background_color'][0]  # All components are the same
-        variation = self.config.api['background_darkness_variation']
+        base_color = self.config.render['background_color'][0]  # All components are the same
+        variation = self.config.render['background_darkness_variation']
         
         # Generate random factor between (1 - variation) and (1 + variation)
         factor = 1.0 + random.uniform(-variation, variation)
@@ -149,20 +149,20 @@ class ClockFace:
         self._update_background_color()
         
         # Clear the surfaces
-        self.api_surface.fill((0, 0, 0, 0))
+        self.render_surface.fill((0, 0, 0, 0))
         self.overlay_surface.fill((0, 0, 0, 0))
         
-        # Fill API surface with background color
-        self.api_surface.fill((*self.gray, 255))
+        # Fill render surface with background color
+        self.render_surface.fill((*self.gray, 255))
         
         # Draw hour markers based on display mode
         display_mode = self.config.clock['display_mode']
         if display_mode in ['render_only', 'both']:
-            # Draw markers on API surface
+            # Draw markers on render surface
             for hour in range(12):
-                self.draw_hour_marker(self.api_surface, hour, self.white)
+                self.draw_hour_marker(self.render_surface, hour, self.white)
         
-        # Always draw hands on API surface for background generation
+        # Always draw hands on render surface for background generation
         # Hour hand
         hour_angle = math.radians((hours % 12 + minutes / 60) * 360 / 12 - 90)
         hour_end = (
@@ -170,7 +170,7 @@ class ClockFace:
             self.center[1] + self.hour_hand_length * math.sin(hour_angle)
         )
         hw = self.config.clock['hour_hand_width']
-        self.draw_tapered_line(self.api_surface, self.white, self.center, hour_end, hw[0], hw[1])
+        self.draw_tapered_line(self.render_surface, self.white, self.center, hour_end, hw[0], hw[1])
         
         # Minute hand
         minute_angle = math.radians(minutes * 360 / 60 - 90)
@@ -179,12 +179,12 @@ class ClockFace:
             self.center[1] + self.minute_hand_length * math.sin(minute_angle)
         )
         mw = self.config.clock['minute_hand_width']
-        self.draw_tapered_line(self.api_surface, self.white, self.center, minute_end, mw[0], mw[1])
+        self.draw_tapered_line(self.render_surface, self.white, self.center, minute_end, mw[0], mw[1])
         
         # Draw center dot
-        pygame.draw.circle(self.api_surface, self.white, self.center, 10)
+        pygame.draw.circle(self.render_surface, self.white, self.center, 10)
         
-        return self.api_surface
+        return self.render_surface
 
     def draw_clock_overlay(self, surface):
         """Draw clock face overlay with hour markers and outer circle"""

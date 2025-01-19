@@ -31,9 +31,9 @@ class Config:
                 'clock': {
                     'use_numbers': self._config['clock']['use_numbers']
                 },
-                'api': {
+                'render': {
                     'background_color': self._config['display']['background_color'],
-                    'checkpoint': self._config['api']['checkpoint']
+                    'checkpoint': self._config['render']['checkpoint']
                 }
             }
             self.save_dynamic()
@@ -100,24 +100,24 @@ class Config:
         return self._config['display']
     
     @property
-    def api(self):
-        # Merge base and dynamic API settings
-        api_config = dict(self._config.get('api', {}))
-        dynamic_api = self._dynamic.get('api', {})
+    def render(self):
+        # Merge base and dynamic render settings
+        render_config = dict(self._config.get('render', {}))
+        dynamic_render = self._dynamic.get('render', {})
         
         # Special handling for models to preserve all model paths
-        if 'models' in dynamic_api:
-            api_config['models'] = {
-                **self._config.get('api', {}).get('models', {}),
-                **dynamic_api.get('models', {})
+        if 'models' in dynamic_render:
+            render_config['models'] = {
+                **self._config.get('render', {}).get('models', {}),
+                **dynamic_render.get('models', {})
             }
         
-        # Merge other API settings
-        for key, value in dynamic_api.items():
+        # Merge other render settings
+        for key, value in dynamic_render.items():
             if key != 'models':
-                api_config[key] = value
+                render_config[key] = value
                 
-        return api_config
+        return render_config
     
     @property
     def clock(self):
