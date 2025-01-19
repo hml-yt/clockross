@@ -325,9 +325,9 @@ class SettingsUI:
                         if key == 'background_color':
                             # Convert contrast level to RGB
                             rgb_value = self.contrast_levels[setting['value']]
-                            self.config.update(section, key, rgb_value)
+                            self.config.update(section, key, value=rgb_value)
                         else:
-                            self.config.update(section, key, setting['value'])
+                            self.config.update(section, key, value=setting['value'])
                         
                         # Special handling for checkpoint change
                         if section == 'render' and key == 'checkpoint':
@@ -336,7 +336,7 @@ class SettingsUI:
                     elif setting['type'] == 'bool':
                         setting['value'] = not setting['value']
                         section, key = setting['key']
-                        self.config.update(section, key, setting['value'])
+                        self.config.update(section, key, value=setting['value'])
                         
                     elif setting['type'] == 'action' and setting['action'] == 'snapshot':
                         self.visible = False
