@@ -19,7 +19,7 @@ def generate_prompt():
     selected_award = random.choice(style_details['awards'])
     
     return f"{theme}, {description}, {', '.join(selected_details)}, {', '.join(selected_resolutions)}, {selected_award}"
-    return f"(\"{theme}, {description}\", \"{', '.join(selected_details)}\", \"{', '.join(selected_resolutions)}, {selected_award}\").and()"
+    # return f"(\"{theme}, {description}\", \"{', '.join(selected_details)}\", \"{', '.join(selected_resolutions)}, {selected_award}\").and()"
 
 class PromptGenerator:
     def __init__(self):

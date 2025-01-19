@@ -7,7 +7,6 @@ from datetime import datetime
 import threading
 from diffusers import AutoencoderKL, ControlNetModel, StableDiffusionControlNetPipeline, DPMSolverMultistepScheduler
 from diffusers.schedulers import AysSchedules
-from transformers import CLIPTextModel
 from compel import Compel
 from .prompt_generator import PromptGenerator
 from ..utils.image_utils import save_debug_image
@@ -105,7 +104,7 @@ class BackgroundUpdater:
             self.pipe.scheduler.config,
             algorithm_type="dpmsolver++",
             timestep_spacing="trailing",
-            use_karras_sigmas=True
+            use_karras_sigmas=True,
         )
         self.pipe.scheduler = scheduler
         
@@ -197,8 +196,8 @@ class BackgroundUpdater:
             gen_config = self.config.render['generation']
             
             # Generate random seed
-            seed = random.randint(0, 2**32 - 1)
-            generator = torch.Generator(device='cuda').manual_seed(seed)
+            generator = torch.Generator(device='cuda')
+            seed = generator.initial_seed()
             
             # Compel prompt
             compel = Compel(tokenizer=self.pipe.tokenizer, text_encoder=self.pipe.text_encoder)

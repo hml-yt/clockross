@@ -11,7 +11,7 @@ display:
 render:
   width: 640
   height: 360
-  background_color: [60, 60, 60]
+  background_color: [25, 25, 25]
   clip_skip: 0
   background_darkness_variation: 0.1
   checkpoint: models/revAnimated_v2Rebirth.safetensors
@@ -19,9 +19,9 @@ render:
     - models/abstractPhoto_abcevereMix.safetensors
     - models/revAnimated_v2Rebirth.safetensors
   contrast_levels: {
-    "High": [30, 30, 30],
-    "Medium": [60, 60, 60],
-    "Low": [75, 75, 75]
+    "High": [25, 25, 25],
+    "Medium": [45, 45, 45],
+    "Low": [60, 60, 60]
   }
   models:
     vae: stabilityai/sd-vae-ft-mse
@@ -32,8 +32,8 @@ render:
   generation:
     num_inference_steps: 12
     guidance_scale: 7
-    controlnet_conditioning_scale: 1.2
-    control_guidance_start: 0.05
+    controlnet_conditioning_scale: 1.0
+    control_guidance_start: 0.15
     control_guidance_end: 0.9
 system:
   shutdown_cmd: sudo /sbin/shutdown -h now
