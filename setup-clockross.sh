@@ -71,22 +71,35 @@ if command -v xset &> /dev/null; then
 fi
 echo -e "${GREEN}✓ Display settings configured${NC}\n"
 
+# Configure X11 monitor settings
+echo -e "${YELLOW}Step 5a: Creating X11 monitor configuration...${NC}"
+cat > /etc/X11/xorg.conf.d/10-monitor.conf << EOL
+Section "ServerFlags"
+	Option "BlankTime" "0"
+	Option "StandbyTime" "0"
+	Option "SuspendTime" "0"
+	Option "OffTime" "0"
+EndSection
+EOL
+chmod 644 /etc/X11/xorg.conf.d/10-monitor.conf
+echo -e "${GREEN}✓ Monitor configuration created${NC}\n"
+
 # Create systemd service
 echo -e "${YELLOW}Step 6: Setting up system service...${NC}"
 cat > /etc/systemd/system/clockross.service << EOL
 [Unit]
-Description=ClockRoss AI Clock
-After=network.target
+Description=Clock App
+After=network.target stable-diffusion.service
 
 [Service]
-Type=simple
-User=$SUDO_USER
-WorkingDirectory=$INSTALL_DIR
 Environment=DISPLAY=:0
 Environment=XAUTHORITY=/home/$SUDO_USER/.Xauthority
+User=$SUDO_USER
+Group=$SUDO_USER
+WorkingDirectory=$INSTALL_DIR
 ExecStartPre=/bin/bash -c "/usr/bin/X :0 -quiet &"
-ExecStart=$INSTALL_DIR/venv/bin/python main.py
-Restart=always
+ExecStart=/bin/bash -c "source $INSTALL_DIR/venv/bin/activate && python main.py"
+Restart=on-failure
 RestartSec=10
 
 [Install]
