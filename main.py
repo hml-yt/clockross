@@ -62,10 +62,20 @@ def main():
     render_clock_face = ClockFace(RENDER_WIDTH, RENDER_HEIGHT)
     # Use display dimensions for the actual display clock face
     display_clock_face = ClockFace(display_width, display_height)
-    surface_manager = SurfaceManager(display_width, display_height, RENDER_WIDTH, RENDER_HEIGHT, debug=debug)
+    
+    # Create settings UI first
+    settings_ui = SettingsUI(display_width, display_height)
+    
+    # Create surface manager with settings UI
+    surface_manager = SurfaceManager(display_width, display_height, RENDER_WIDTH, RENDER_HEIGHT, debug=debug, settings_ui=settings_ui)
+    
+    # Create background updater and connect components
     background_updater = BackgroundUpdater(debug=debug)
     background_updater.set_surface_manager(surface_manager)
-    settings_ui = SettingsUI(display_width, display_height, background_updater, surface_manager)
+    
+    # Connect settings UI to other components
+    settings_ui.background_updater = background_updater
+    settings_ui.surface_manager = surface_manager
     
     running = True
     first_background_received = False

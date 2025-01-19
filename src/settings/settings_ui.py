@@ -21,7 +21,6 @@ class Dialog:
         self.message = ""
         self.title = ""
         self.callback = None
-        self.settings_ui = None  # Reference to settings UI for checking pipeline loading state
         
     def show_confirmation(self, title, message, callback):
         """Show a confirmation dialog with Yes/No buttons"""
@@ -99,17 +98,15 @@ class Dialog:
         # Handle auto-hide for notifications
         if self.duration is not None:
             current_time = time.time()
-            # Only check duration if not loading pipeline or if duration is None
-            if not hasattr(self, 'settings_ui') or not self.settings_ui.is_loading_pipeline or self.duration is None:
-                if current_time - self.start_time > self.duration:
-                    self.visible = False
-                    return
+            if current_time - self.start_time > self.duration:
+                self.visible = False
+                return
                 
         # For notifications, use a smaller dialog
         if not self.buttons:
             # Calculate fade out alpha for notifications
             alpha = 255
-            if not hasattr(self, 'settings_ui') or not self.settings_ui.is_loading_pipeline or self.duration is None:
+            if self.duration is not None:
                 alpha = int(255 * (1 - (time.time() - self.start_time) / self.duration))
             
             # Draw notification with wider width
@@ -189,7 +186,9 @@ class SettingsUI:
         self.background_updater = background_updater
         self.surface_manager = surface_manager
         self.checkpoint_changed = False
-        self.is_loading_pipeline = False
+        self.notification = None
+        self.notification_start = 0
+        self.notification_duration = None
         
         # UI settings
         self.padding = 30
@@ -212,6 +211,13 @@ class SettingsUI:
         
         # Get available models
         self.available_models = self._get_available_models()
+
+        # Define contrast levels
+        self.contrast_levels = {
+            'High': [30, 30, 30],
+            'Medium': [60, 60, 60],
+            'Low': [90, 90, 90]
+        }
         
         # Define settings
         self.settings = [
@@ -229,12 +235,11 @@ class SettingsUI:
                 'value': self.config.clock['use_numbers']
             },
             {
-                'name': 'Background Color',
+                'name': 'Contrast',
                 'key': ('render', 'background_color'),
-                'type': 'color_picker',
-                'label': 'Background Color',
-                'description': 'Base color for clock face',
-                'value': self.config.render['background_color']
+                'type': 'select',
+                'value': 'Medium',  # Default to medium
+                'options': list(self.contrast_levels.keys())
             },
             {
                 'name': 'Model Checkpoint',
@@ -262,6 +267,22 @@ class SettingsUI:
         self.panel_x = (screen_width - self.panel_width) // 2
         self.panel_y = (screen_height - self.panel_height) // 2
 
+    def handle_shutdown(self, confirmed):
+        """Handle shutdown confirmation"""
+        if confirmed:
+            os.system(self.config.system['shutdown_cmd'])
+
+    def handle_restart(self, confirmed):
+        """Handle restart confirmation"""
+        if confirmed:
+            os.system(self.config.system['restart_cmd'])
+
+    def show_notification(self, message, duration=2):
+        """Show a notification message"""
+        self.notification = message
+        self.notification_duration = duration
+        self.notification_start = time.time()
+
     def toggle(self):
         """Toggle settings visibility"""
         if self.visible:  # If we're closing the panel
@@ -269,81 +290,80 @@ class SettingsUI:
             if self.checkpoint_changed and self.background_updater:
                 # Show notifications after a slight delay to ensure settings is hidden
                 pygame.time.wait(100)  # Short delay
-                self.is_loading_pipeline = True
-                self.dialog.show_notification(f"Loading checkpoint: {self.config.render['checkpoint'].split('_')[0]}...", duration=30)  # Long duration
+                self.show_notification(f"Loading checkpoint: {self.config.render['checkpoint'].split('_')[0]}...", duration=30)  # Long duration
                 def on_pipeline_loaded():
-                    self.is_loading_pipeline = False
+                    self.show_notification("New checkpoint loaded", duration=2)
+                    self.background_updater.last_attempt = 0  # Force update after loading
                 self.background_updater.reload_pipeline(complete_callback=on_pipeline_loaded)  # Reload with callback
-                self.background_updater.last_attempt = 0  # Force update
                 self.checkpoint_changed = False
             return
         self.visible = True
     
     def handle_click(self, pos):
         """Handle click events in the settings UI"""
-        if not self.visible:
-            return False
+        # Check if dialog is visible and handle its clicks first
+        if self.dialog.visible:
+            return self.dialog.handle_click(pos)
             
-        # Check if click is outside the settings panel
+        # Get panel bounds
         panel_x = (self.screen_width - self.panel_width) // 2
         panel_y = (self.screen_height - self.panel_height) // 2
         
-        if not (panel_x <= pos[0] <= panel_x + self.panel_width and
+        # If settings is visible and click is inside panel, handle settings interactions
+        if self.visible and (panel_x <= pos[0] <= panel_x + self.panel_width and
                 panel_y <= pos[1] <= panel_y + self.panel_height):
-            self.visible = False
-            return True
-            
-        # Handle setting changes
-        for i, setting in enumerate(self.settings):
-            item_y = panel_y + self.padding + i * self.item_height
-            item_rect = pygame.Rect(panel_x + self.padding, item_y, self.panel_width - 2 * self.padding, self.item_height)
-            
-            if item_rect.collidepoint(pos[0], pos[1]):
-                if setting['type'] == 'select':
-                    current_value = setting['value']
-                    current_index = setting['options'].index(current_value)
-                    next_index = (current_index + 1) % len(setting['options'])
-                    setting['value'] = setting['options'][next_index]
-                    
-                    # Update config
-                    section, key = setting['key']
-                    self.config.update(section, key, setting['value'])
-                    
-                    # Special handling for checkpoint change
-                    if section == 'render' and key == 'checkpoint':
-                        self.visible = False  # Close settings dialog
-                        self.dialog.show_notification("Loading new checkpoint...", duration=None)  # Show loading notification
-                        self.is_loading_pipeline = True
-                        self.background_updater.reload_pipeline(complete_callback=self.on_pipeline_loaded)
-                    
-                elif setting['type'] == 'bool':
-                    setting['value'] = not setting['value']
-                    section, key = setting['key']
-                    self.config.update(section, key, setting['value'])
-                    
-                elif setting['type'] == 'action' and setting['action'] == 'snapshot':
-                    self.visible = False  # Close settings dialog
-                    self.dialog.show_notification("Saving snapshot...", duration=2)  # Show saving notification
-                    self.take_screenshot()
-                    
-                elif setting['type'] == 'system_row':
-                    option_width = (self.panel_width - 3 * self.padding) // 2
-                    shutdown_rect = pygame.Rect(panel_x + self.padding, item_y, option_width, self.item_height)
-                    restart_rect = pygame.Rect(panel_x + self.panel_width - self.padding - option_width, item_y, option_width, self.item_height)
-                    
-                    if shutdown_rect.collidepoint(pos[0], pos[1]):
-                        self.dialog.show_confirmation("Shutdown", "Are you sure you want to shutdown?", handle_shutdown)
-                    elif restart_rect.collidepoint(pos[0], pos[1]):
-                        self.dialog.show_confirmation("Restart", "Are you sure you want to restart?", handle_restart)
+            # Handle setting changes
+            for i, setting in enumerate(self.settings):
+                item_y = panel_y + self.padding + i * self.item_height
+                item_rect = pygame.Rect(panel_x + self.padding, item_y, self.panel_width - 2 * self.padding, self.item_height)
                 
-                return True
+                if item_rect.collidepoint(pos[0], pos[1]):
+                    if setting['type'] == 'select' or setting['type'] == 'dropdown':
+                        current_value = setting['value']
+                        current_index = setting['options'].index(current_value)
+                        next_index = (current_index + 1) % len(setting['options'])
+                        setting['value'] = setting['options'][next_index]
+                        
+                        # Update config
+                        section, key = setting['key']
+                        if key == 'background_color':
+                            # Convert contrast level to RGB
+                            rgb_value = self.contrast_levels[setting['value']]
+                            self.config.update(section, key, rgb_value)
+                        else:
+                            self.config.update(section, key, setting['value'])
+                        
+                        # Special handling for checkpoint change
+                        if section == 'render' and key == 'checkpoint':
+                            self.checkpoint_changed = True
+                        
+                    elif setting['type'] == 'bool':
+                        setting['value'] = not setting['value']
+                        section, key = setting['key']
+                        self.config.update(section, key, setting['value'])
+                        
+                    elif setting['type'] == 'action' and setting['action'] == 'snapshot':
+                        self.visible = False
+                        self.show_notification("Saving snapshot...", duration=2)
+                        self.take_screenshot()
+                        
+                    elif setting['type'] == 'system_row':
+                        option_width = (self.panel_width - 3 * self.padding) // 2
+                        shutdown_rect = pygame.Rect(panel_x + self.padding, item_y, option_width, self.item_height)
+                        restart_rect = pygame.Rect(panel_x + self.panel_width - self.padding - option_width, item_y, option_width, self.item_height)
+                        
+                        if shutdown_rect.collidepoint(pos[0], pos[1]):
+                            self.dialog.show_confirmation("Shutdown", "Are you sure you want to shutdown?", self.handle_shutdown)
+                        elif restart_rect.collidepoint(pos[0], pos[1]):
+                            self.dialog.show_confirmation("Restart", "Are you sure you want to restart?", self.handle_restart)
+                    
+                    return True
+        else:
+            # Any click outside when visible, or any click when not visible, toggles visibility
+            self.toggle()
+            return True
         
         return True
-
-    def on_pipeline_loaded(self):
-        """Callback when pipeline has finished loading"""
-        self.is_loading_pipeline = False
-        self.dialog.show_notification("New checkpoint loaded", duration=2)
 
     def take_screenshot(self):
         """Take screenshots of the clock face, hands, and save render request"""
@@ -353,96 +373,123 @@ class SettingsUI:
 
     def draw(self, surface):
         """Draw the settings UI if visible"""
-        if not self.visible:
-            return
+        if self.visible:
+            # Draw settings panel
+            panel_surface = pygame.Surface((self.panel_width, self.panel_height), pygame.SRCALPHA)
+            pygame.draw.rect(panel_surface, self.panel_color, panel_surface.get_rect())
             
-        # Draw settings panel
-        panel_surface = pygame.Surface((self.panel_width, self.panel_height), pygame.SRCALPHA)
-        pygame.draw.rect(panel_surface, self.panel_color, panel_surface.get_rect())
-        
-        # Draw settings items
-        for i, setting in enumerate(self.settings):
-            item_rect = pygame.Rect(
-                0,
-                self.padding + i * self.item_height,
-                self.panel_width,
-                self.item_height
-            )
-            
-            if setting['type'] == 'system_row':
-                # Draw system row with two buttons
-                button_width = (self.panel_width - 3 * self.padding) // 2
-                button_height = self.item_height - 10
-                button_y = self.padding + i * self.item_height + 5
-                
-                # Draw shutdown button
-                shutdown_rect = pygame.Rect(
-                    self.padding,
-                    button_y,
-                    button_width,
-                    button_height
+            # Draw settings items
+            for i, setting in enumerate(self.settings):
+                item_rect = pygame.Rect(
+                    0,
+                    self.padding + i * self.item_height,
+                    self.panel_width,
+                    self.item_height
                 )
-                pygame.draw.rect(panel_surface, (180, 60, 60), shutdown_rect)
-                shutdown_text = self.font.render("Shutdown", True, self.text_color)
-                text_x = self.padding + (button_width - shutdown_text.get_width()) // 2
-                text_y = button_y + (button_height - shutdown_text.get_height()) // 2
-                panel_surface.blit(shutdown_text, (text_x, text_y))
                 
-                # Draw restart button
-                restart_rect = pygame.Rect(
-                    self.padding * 2 + button_width,
-                    button_y,
-                    button_width,
-                    button_height
-                )
-                pygame.draw.rect(panel_surface, (60, 120, 180), restart_rect)
-                restart_text = self.font.render("Restart", True, self.text_color)
-                text_x = self.padding * 2 + button_width + (button_width - restart_text.get_width()) // 2
-                text_y = button_y + (button_height - restart_text.get_height()) // 2
-                panel_surface.blit(restart_text, (text_x, text_y))
-            elif setting['type'] == 'action':
-                # Draw action button
-                button_rect = pygame.Rect(
-                    self.padding,
-                    self.padding + i * self.item_height + 5,
-                    self.panel_width - 2 * self.padding,
-                    self.item_height - 10
-                )
-                pygame.draw.rect(panel_surface, self.active_color, button_rect)
-                text = self.font.render(setting['name'], True, self.text_color)
-                text_rect = text.get_rect(center=button_rect.center)
-                panel_surface.blit(text, text_rect)
-            else:
-                # Draw setting name
-                text = self.font.render(setting['name'], True, self.text_color)
-                panel_surface.blit(text, (self.padding, self.padding + i * self.item_height + 10))
-                
-                # Draw setting value
-                if setting['type'] == 'bool':
-                    value_text = "On" if setting['value'] else "Off"
-                    color = self.active_color if setting['value'] else self.text_color
-                elif setting['type'] == 'color_picker':
-                    value_text = f"RGB{tuple(setting['value'])}"
-                    color = self.text_color
-                elif setting['type'] == 'dropdown':
-                    # Show shortened version of the checkpoint name
-                    value_text = setting['value'].split('_')[0]
-                    color = self.active_color
-                elif setting['type'] == 'select':
-                    value_text = setting['value']
-                    color = self.active_color
+                if setting['type'] == 'system_row':
+                    # Draw system row with two buttons
+                    button_width = (self.panel_width - 3 * self.padding) // 2
+                    button_height = self.item_height - 10
+                    button_y = self.padding + i * self.item_height + 5
+                    
+                    # Draw shutdown button
+                    shutdown_rect = pygame.Rect(
+                        self.padding,
+                        button_y,
+                        button_width,
+                        button_height
+                    )
+                    pygame.draw.rect(panel_surface, (180, 60, 60), shutdown_rect)
+                    shutdown_text = self.font.render("Shutdown", True, self.text_color)
+                    text_x = self.padding + (button_width - shutdown_text.get_width()) // 2
+                    text_y = button_y + (button_height - shutdown_text.get_height()) // 2
+                    panel_surface.blit(shutdown_text, (text_x, text_y))
+                    
+                    # Draw restart button
+                    restart_rect = pygame.Rect(
+                        self.padding * 2 + button_width,
+                        button_y,
+                        button_width,
+                        button_height
+                    )
+                    pygame.draw.rect(panel_surface, (60, 120, 180), restart_rect)
+                    restart_text = self.font.render("Restart", True, self.text_color)
+                    text_x = self.padding * 2 + button_width + (button_width - restart_text.get_width()) // 2
+                    text_y = button_y + (button_height - restart_text.get_height()) // 2
+                    panel_surface.blit(restart_text, (text_x, text_y))
+                elif setting['type'] == 'action':
+                    # Draw action button
+                    button_rect = pygame.Rect(
+                        self.padding,
+                        self.padding + i * self.item_height + 5,
+                        self.panel_width - 2 * self.padding,
+                        self.item_height - 10
+                    )
+                    pygame.draw.rect(panel_surface, self.active_color, button_rect)
+                    text = self.font.render(setting['name'], True, self.text_color)
+                    text_rect = text.get_rect(center=button_rect.center)
+                    panel_surface.blit(text, text_rect)
                 else:
-                    continue  # Skip rendering value for other types
-                
-                value_surface = self.font.render(value_text, True, color)
-                value_x = self.panel_width - value_surface.get_width() - self.padding
-                panel_surface.blit(value_surface, (value_x, self.padding + i * self.item_height + 10))
-                
-        # Draw panel on main surface
-        surface.blit(panel_surface, (self.panel_x, self.panel_y))
+                    # Draw setting name
+                    text = self.font.render(setting['name'], True, self.text_color)
+                    panel_surface.blit(text, (self.padding, self.padding + i * self.item_height + 10))
+                    
+                    # Draw setting value
+                    if setting['type'] == 'bool':
+                        value_text = "On" if setting['value'] else "Off"
+                        color = self.active_color if setting['value'] else self.text_color
+                    elif setting['type'] == 'color_picker':
+                        value_text = f"RGB{tuple(setting['value'])}"
+                        color = self.text_color
+                    elif setting['type'] == 'dropdown':
+                        # Show shortened version of the checkpoint name
+                        value_text = setting['value'].split('_')[0]
+                        color = self.active_color
+                    elif setting['type'] == 'select':
+                        value_text = setting['value']
+                        color = self.active_color
+                    else:
+                        continue  # Skip rendering value for other types
+                    
+                    value_surface = self.font.render(value_text, True, color)
+                    value_x = self.panel_width - value_surface.get_width() - self.padding
+                    panel_surface.blit(value_surface, (value_x, self.padding + i * self.item_height + 10))
+            
+            # Draw panel on main surface
+            surface.blit(panel_surface, (self.panel_x, self.panel_y))
+            
+            # Draw dialog if visible
+            self.dialog.draw(surface)
         
-        # Draw dialog if visible
-        self.dialog.draw(surface)
+        # Draw notification if active
+        if self.notification:
+            current_time = time.time()
+            if self.notification_duration is None or current_time - self.notification_start <= self.notification_duration:
+                # Calculate fade out alpha for notifications
+                alpha = 255
+                if self.notification_duration is not None:
+                    alpha = int(255 * (1 - (current_time - self.notification_start) / self.notification_duration))
+                
+                # Draw notification with wider width
+                message_surface = pygame.Surface((500, 60), pygame.SRCALPHA)
+                message_text = self.font.render(self.notification, True, (255, 255, 255))
+                text_rect = message_text.get_rect(center=(250, 30))
+                
+                # Draw semi-transparent background
+                pygame.draw.rect(message_surface, (40, 40, 40, min(200, alpha)), message_surface.get_rect(), border_radius=10)
+                pygame.draw.rect(message_surface, (80, 80, 80, min(200, alpha)), message_surface.get_rect(), 2, border_radius=10)
+                
+                # Apply fade out to text
+                message_text.set_alpha(alpha)
+                message_surface.blit(message_text, text_rect)
+                
+                # Position at bottom center of screen
+                message_x = (self.screen_width - 500) // 2
+                message_y = self.screen_height - 80
+                surface.blit(message_surface, (message_x, message_y))
+            else:
+                self.notification = None
 
     def _download_default_model(self):
         """Download the default Stable Diffusion 1.5 model if no models are present"""

@@ -29,6 +29,7 @@ class BackgroundUpdater:
         self.lock = threading.Lock()
         self.last_attempt = 0
         self.is_updating = False
+        self.is_loading_pipeline = False
         self.update_thread = None
         self.prompt_generator = PromptGenerator()
         
@@ -53,17 +54,13 @@ class BackgroundUpdater:
         """Clean up the existing pipeline to free GPU memory"""
         if hasattr(self, 'pipe'):
             try:
-                # Delete the pipeline components explicitly
-                if hasattr(self.pipe, 'vae'):
-                    del self.pipe.vae
-                if hasattr(self.pipe, 'controlnet'):
-                    del self.pipe.controlnet
-                if hasattr(self.pipe, 'scheduler'):
-                    del self.pipe.scheduler
                 # Delete the main pipeline
                 del self.pipe
+                self.pipe = None
                 # Clean up memory
                 self._empty_cache()
+                # Add small delay to ensure cleanup
+                time.sleep(1)
             except Exception as e:
                 if self.debug:
                     print(f"Error cleaning up pipeline: {e}")
@@ -117,32 +114,45 @@ class BackgroundUpdater:
 
     def _do_reload_pipeline(self):
         """Internal method to handle the actual pipeline reload"""
-        if self.debug:
-            print("Starting pipeline reload...")
+        try:
+            if self.debug:
+                print("Starting pipeline reload...")
+                
+            # Force cleanup of any ongoing generation
+            if self.is_updating and self.update_thread:
+                self.is_updating = False
+                self.update_thread = None
             
-        # Force cleanup of any ongoing generation
-        if self.is_updating and self.update_thread:
-            self.is_updating = False
-            self.update_thread = None
-        
-        # Now safe to cleanup and reload
-        if self.debug:
-            print("Cleaning up old pipeline...")
-        self._cleanup_pipeline()
-        if self.debug:
-            print("Loading new pipeline...")
-        self._load_pipeline()
-        
-        if self.debug:
-            print("Pipeline reload complete")
-        
-        # Notify completion if callback is set
-        if hasattr(self, 'reload_complete_callback') and self.reload_complete_callback:
-            self.reload_complete_callback()
+            # Now safe to cleanup and reload
+            if self.debug:
+                print("Cleaning up old pipeline...")
+            self._cleanup_pipeline()
+            
+            if self.debug:
+                print("Loading new pipeline...")
+            self._load_pipeline()
+            
+            if self.debug:
+                print("Pipeline reload complete")
+            
+            # Notify completion if callback is set
+            if hasattr(self, 'reload_complete_callback') and self.reload_complete_callback:
+                self.reload_complete_callback()
+        except Exception as e:
+            if hasattr(self, 'reload_error_callback') and self.reload_error_callback:
+                self.reload_error_callback(e)
+            if self.debug:
+                print(f"Error reloading pipeline: {e}")
 
-    def reload_pipeline(self, complete_callback=None):
+    def reload_pipeline(self, complete_callback=None, error_callback=None):
         """Reload the pipeline with new configuration in a separate thread"""
-        self.reload_complete_callback = complete_callback
+        self.is_loading_pipeline = True
+        def wrapped_callback():
+            self.is_loading_pipeline = False
+            if complete_callback:
+                complete_callback()
+        self.reload_complete_callback = wrapped_callback
+        self.reload_error_callback = error_callback
         reload_thread = threading.Thread(target=self._do_reload_pipeline)
         reload_thread.daemon = True
         reload_thread.start()
@@ -283,8 +293,10 @@ class BackgroundUpdater:
         """Start a background update if conditions are met"""
         current_time = time.time()
         with self.lock:
-            if self.is_updating or (current_time - self.last_attempt) < self.update_interval:
+            # Don't update if we're already updating or if the pipeline is loading
+            if self.is_updating or self.is_loading_pipeline or (current_time - self.last_attempt) < self.update_interval:
                 return
+                
             self.is_updating = True
             self.last_attempt = current_time
             

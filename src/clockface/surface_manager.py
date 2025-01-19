@@ -18,7 +18,7 @@ from ..config import Config
 class SurfaceManager:
     """Manages the various surfaces used in the clock display"""
     
-    def __init__(self, display_width, display_height, render_width, render_height, debug=False):
+    def __init__(self, display_width, display_height, render_width, render_height, debug=False, settings_ui=None):
         """Initialize the surface manager"""
         self.config = Config()
         self.display_width = display_width
@@ -26,6 +26,7 @@ class SurfaceManager:
         self.render_width = render_width
         self.render_height = render_height
         self.debug = debug
+        self.settings_ui = settings_ui
         
         # Initialize surfaces
         self.hands_surface = None
@@ -141,4 +142,10 @@ class SurfaceManager:
         
         # Save current background if available
         if self.background_surface:
-            pygame.image.save(self.background_surface, f"{self.snapshots_dir}/{timestamp}_3_background.png") 
+            pygame.image.save(self.background_surface, f"{self.snapshots_dir}/{timestamp}_3_background.png")
+    
+    def set_background_updater(self, background_updater):
+        """Set the background updater instance"""
+        self.background_updater = background_updater
+        if background_updater:
+            background_updater.set_surface_manager(self) 
