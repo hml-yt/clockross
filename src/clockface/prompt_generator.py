@@ -18,6 +18,7 @@ def generate_prompt():
     selected_resolutions = random.sample(prompt_config['resolutions'], k=random.randint(1, len(prompt_config['resolutions'])))
     selected_award = random.choice(style_details['awards'])
     
+    return f"{theme}, {description}, {', '.join(selected_details)}, {', '.join(selected_resolutions)}, {selected_award}"
     return f"(\"{theme}, {description}\", \"{', '.join(selected_details)}\", \"{', '.join(selected_resolutions)}, {selected_award}\").and()"
 
 class PromptGenerator:
