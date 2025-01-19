@@ -6,6 +6,13 @@ from src.clockface.background_updater import BackgroundUpdater
 from src.settings import SettingsUI
 from src.clockface.surface_manager import SurfaceManager
 from src.config import Config
+import os
+
+# Set Hugging Face cache directories
+os.environ['HF_HOME'] = os.path.join(os.path.dirname(__file__), 'cache', 'hf')
+
+# Create cache directories if they don't exist
+os.makedirs(os.environ['HF_HOME'], exist_ok=True)
 
 # Initialize Pygame
 pygame.init()

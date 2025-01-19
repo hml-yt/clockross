@@ -15,8 +15,11 @@ render:
     - models/abstractPhoto_abcevereMix.safetensors
     - models/revAnimated_v2Rebirth.safetensors
   models:
-    vae: models/vae-ft-mse-840000-ema-pruned.safetensors
-    controlnet: models/control_v11f1e_sd15_tile.safetensors
+    vae: stabilityai/sd-vae-ft-mse
+    controlnet: lllyasviel/control_v11f1e_sd15_tile
+    default_model:
+      url: https://huggingface.co/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned.safetensors
+      path: models/sd-v1-5.safetensors
   generation:
     num_inference_steps: 12
     guidance_scale: 7

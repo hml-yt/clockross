@@ -6,6 +6,7 @@ import json
 from datetime import datetime
 from ..config import Config
 import time
+import requests
 
 class Dialog:
     def __init__(self, screen_width, screen_height, font):
@@ -188,7 +189,7 @@ class SettingsUI:
         self.background_updater = background_updater
         self.surface_manager = surface_manager
         self.checkpoint_changed = False
-        self.is_loading_pipeline = False  # Add flag for pipeline loading state
+        self.is_loading_pipeline = False
         
         # UI settings
         self.padding = 30
@@ -199,7 +200,7 @@ class SettingsUI:
         
         # Dialog system
         self.dialog = Dialog(screen_width, screen_height, self.font)
-        self.dialog.settings_ui = self  # Add reference to settings UI
+        self.dialog.settings_ui = self
         
         # Colors
         self.panel_color = (30, 30, 30, 220)
@@ -208,6 +209,9 @@ class SettingsUI:
         
         # Font options for random selection
         self.font_options = ["Arial", "Helvetica", "Times New Roman", "Brush Script MT"]
+        
+        # Get available models
+        self.available_models = self._get_available_models()
         
         # Define settings
         self.settings = [
@@ -239,7 +243,7 @@ class SettingsUI:
                 'label': 'Model',
                 'description': 'Stable Diffusion model to use',
                 'value': self.config.render['checkpoint'],
-                'options': self.config.render['checkpoints']
+                'options': self.available_models
             },
             {
                 'name': 'Save snapshot',
@@ -438,4 +442,46 @@ class SettingsUI:
         surface.blit(panel_surface, (self.panel_x, self.panel_y))
         
         # Draw dialog if visible
-        self.dialog.draw(surface) 
+        self.dialog.draw(surface)
+
+    def _download_default_model(self):
+        """Download the default Stable Diffusion 1.5 model if no models are present"""
+        models_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'models')
+        os.makedirs(models_dir, exist_ok=True)
+        
+        model_url = self.config.render['models']['default_model']['url']
+        model_path = os.path.join(os.path.dirname(os.path.dirname(models_dir)), 
+                                 self.config.render['models']['default_model']['path'])
+        
+        # Show downloading notification
+        self.dialog.show_notification("Downloading Stable Diffusion 1.5...", duration=None)
+        
+        # Download with progress tracking
+        response = requests.get(model_url, stream=True)
+        total_size = int(response.headers.get('content-length', 0))
+        
+        with open(model_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+        
+        self.dialog.show_notification("Download complete!", duration=2)
+        return self.config.render['models']['default_model']['path']
+
+    def _get_available_models(self):
+        """Scan the models directory for available checkpoints"""
+        models_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'models')
+        models = []
+        if os.path.exists(models_dir):
+            for file in os.listdir(models_dir):
+                if file.endswith('.safetensors'):
+                    models.append(os.path.join('models', file))
+        
+        if not models:
+            # No models found, download default SD 1.5
+            default_model = self._download_default_model()
+            models.append(os.path.relpath(default_model, os.path.dirname(models_dir)))
+            # Update config to use the new model
+            self.config.update('render', 'checkpoint', models[0])
+            
+        return models 

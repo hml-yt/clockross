@@ -69,20 +69,16 @@ class BackgroundUpdater:
     def _load_pipeline(self):
         """Load the pipeline with current configuration"""
         # Load VAE
-        vae = AutoencoderKL.from_single_file(
+        vae = AutoencoderKL.from_pretrained(
             self.config.render['models']['vae'],
             torch_dtype=torch.float16
         ).to('cuda')
         
         # Load ControlNet
-        controlnet = ControlNetModel.from_single_file(
+        controlnet = ControlNetModel.from_pretrained(
             self.config.render['models']['controlnet'],
             torch_dtype=torch.float16
         ).to('cuda')
-        
-        # Load sampling schedule
-        sampling_schedule = AysSchedules["StableDiffusionTimesteps"]
-        sigmas = AysSchedules["StableDiffusionSigmas"]
         
         # Load main model
         self.pipe = StableDiffusionControlNetPipeline.from_single_file(
@@ -91,8 +87,6 @@ class BackgroundUpdater:
             torch_dtype=torch.float16,
             safety_checker=None,
             generator=torch.Generator(device='cuda'),
-            timesteps=sampling_schedule,
-            sigmas=sigmas,
             vae=vae
         ).to('cuda')
         
