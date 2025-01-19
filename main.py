@@ -50,6 +50,12 @@ def main():
         pygame.mouse.set_visible(False)  # Hide cursor only in fullscreen mode
     pygame.display.set_caption("Analog Clock with AI Background")
     
+    # Show splash screen
+    splash = pygame.image.load('splash.png')
+    splash = pygame.transform.smoothscale(splash, (display_width, display_height))
+    screen.blit(splash, (0, 0))
+    pygame.display.flip()
+    
     # Initialize components
     clock = pygame.time.Clock()
     # Use render dimensions for the clock face that will be used for background generation
