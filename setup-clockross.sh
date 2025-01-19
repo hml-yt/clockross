@@ -36,18 +36,10 @@ echo -e "${YELLOW}Step 4: Downloading AI models...${NC}"
 mkdir -p models
 
 # Define model URLs
-VAE_URL="https://huggingface.co/stabilityai/sd-vae-ft-mse/resolve/main/diffusion_pytorch_model.safetensors"
-CONTROLNET_URL="https://huggingface.co/nolanaatama/models/resolve/main/control_v11f1e_sd15_tile_fp16.safetensors"
 ABSTRACT_MODEL_URL="https://huggingface.co/davidtab/clockross-models/resolve/main/abstractPhoto_abcevereMix.safetensors"
 REV_ANIMATED_URL="https://huggingface.co/davidtab/clockross-models/resolve/main/revAnimated_v2Rebirth.safetensors"
 
 # Download models
-echo "Downloading VAE model..."
-wget -O cache/vae-ft-mse-840000-ema-pruned.safetensors "$VAE_URL"
-
-echo "Downloading ControlNet model..."
-wget -O cache/control_v11f1e_sd15_tile.safetensors "$CONTROLNET_URL"
-
 echo "Downloading Abstract Photo model..."
 wget -O models/abstractPhoto_abcevereMix.safetensors "$ABSTRACT_MODEL_URL"
 
