@@ -2,10 +2,7 @@ display:
   windowed_width: 1024
   windowed_height: 600
   fps: 30
-  background_color:
-  - 70
-  - 70
-  - 70
+  background_color: [70, 70, 70]
 render:
   width: 640
   height: 360
@@ -37,15 +34,9 @@ clock:
   second_hand_length_ratio: 0.9
   numbered_hand_reduction: 0.2
   overlay_opacity: 75
-  hour_hand_width:
-  - 24
-  - 1
-  minute_hand_width:
-  - 16
-  - 1
-  second_hand_width:
-  - 4
-  - 1
+  hour_hand_width: [24, 1]
+  minute_hand_width: [16, 1]
+  second_hand_width: [4, 1]
   marker_width: 3
   use_numbers: true
   font_size: 36

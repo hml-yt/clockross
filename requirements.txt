@@ -10,3 +10,4 @@ accelerate
 xformers
 torch>=2.0.0 
 triton
+compel

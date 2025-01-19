@@ -7,6 +7,7 @@ from datetime import datetime
 import threading
 from diffusers import AutoencoderKL, ControlNetModel, StableDiffusionControlNetPipeline, DPMSolverMultistepScheduler
 from diffusers.schedulers import AysSchedules
+from compel import Compel
 from .prompt_generator import PromptGenerator
 from ..utils.image_utils import save_debug_image
 from ..config import Config
@@ -179,13 +180,27 @@ class BackgroundUpdater:
             seed = random.randint(0, 2**32 - 1)
             generator = torch.Generator(device='cuda').manual_seed(seed)
             
+            # Compel prompt
+            compel = Compel(tokenizer=self.pipe.tokenizer, text_encoder=self.pipe.text_encoder)
+            conditioning = compel(prompt)
+
+            negative_prompt = (
+                "ugly++, distorted++, deformed++, blurry++, nsfw+++,"
+                "(worst quality)++, (low quality)++, "
+                "watermark, signature, text, logo, copyright, "
+                "noisy, grainy, artifacts, "
+                "oversaturated, overexposed, high contrast, "
+            )
+            negative_conditioning = compel(negative_prompt)
+            [conditioning, negative_conditioning] = compel.pad_conditioning_tensors_to_same_length([conditioning, negative_conditioning])
+            
             # Generate image
             image = self.pipe(
-                prompt,
+                prompt_embeds=conditioning,
+                negative_prompt_embeds=negative_conditioning,
                 image=source_image,
                 height=self.config.render['height'],
                 width=self.config.render['width'],
-                negative_prompt="asian, (worst quality, low quality:1.4), watermark, signature, flower, facial marking, (women:1.2), (female:1.2), blue jeans, 3d, render, doll, plastic, blur, haze, monochrome, b&w, text, (ugly:1.2), unclear eyes, no arms, bad anatomy, cropped, censoring, asymmetric eyes, bad anatomy, bad proportions, cropped, cross-eyed, deformed, extra arms, extra fingers, extra limbs, fused fingers, jpeg artifacts, malformed, mangled hands, misshapen body, missing arms, missing fingers, missing hands, missing legs, poorly drawn, tentacle finger, too many arms, too many fingers, (worst quality, low quality:1.4), watermark, signature,illustration,painting, anime,cartoon",
                 controlnet_conditioning_scale=gen_config['controlnet_conditioning_scale'],
                 num_inference_steps=gen_config['num_inference_steps'],
                 guidance_scale=gen_config['guidance_scale'],
