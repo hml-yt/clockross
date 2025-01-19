@@ -157,10 +157,7 @@ class ClockFace:
         self._update_background_color()
         
         # Clear the surfaces
-        self.render_surface.fill(tuple(self.config.display['background_color']))  # Display background color
         self.overlay_surface.fill((0, 0, 0, 0))
-        
-        # Fill render surface with gray
         self.render_surface.fill(self.gray)
         
         # Draw hour markers based on display mode

@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 import os
 from ..config import Config
+import time
 
 def save_debug_image(image, prefix):
     """Save a debug image with timestamp.
@@ -13,15 +14,21 @@ def save_debug_image(image, prefix):
         image: Either a pygame Surface or PIL Image
         prefix: String prefix for the filename (e.g., 'prerender' or 'background')
     """
-    timestamp = datetime.now().strftime("%H%M%S")
-    os.makedirs("debug", exist_ok=True)
-    debug_filename = os.path.join("debug", f"debug_{prefix}_{timestamp}.png")
+    # Create debug directory if it doesn't exist
+    os.makedirs('debug', exist_ok=True)
     
-    if isinstance(image, pygame.Surface):
-        pygame.image.save(image, debug_filename)
-    else:  # PIL Image
-        image.save(debug_filename)
+    # Generate debug filename with timestamp
+    timestamp = time.strftime("%H%M%S")
+    debug_filename = f"debug/debug_{prefix}_{timestamp}.png"
     
+    # Convert numpy array to PIL Image if needed
+    if isinstance(image, np.ndarray):
+        image = Image.fromarray(image.astype('uint8'))
+    elif isinstance(image, pygame.Surface):
+        image = Image.fromarray(pygame.surfarray.array3d(image))
+    
+    # Save the image
+    image.save(debug_filename)
     print(f"Saved {prefix} debug image to {debug_filename}")
 
 def scale_pil_image_to_display(pil_image, target_width, target_height):

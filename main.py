@@ -28,7 +28,7 @@ WINDOWED_WIDTH = config.display['windowed_width']
 WINDOWED_HEIGHT = config.display['windowed_height']
 RENDER_WIDTH = config.render['width']
 RENDER_HEIGHT = config.render['height']
-BACKGROUND_COLOR = tuple(config.display['background_color'])
+BACKGROUND_COLOR = tuple(config.render['background_color'])
 
 def parse_args():
     parser = argparse.ArgumentParser(description='AI-Powered Analog Clock')

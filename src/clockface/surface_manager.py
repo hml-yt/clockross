@@ -43,8 +43,6 @@ class SurfaceManager:
     def update_hands(self, surface):
         """Update the hands surface and return it directly"""
         self.hands_surface = surface
-        if self.debug:
-            save_debug_image(surface, "prerender")
         return surface
     
     def update_background(self, image_data):

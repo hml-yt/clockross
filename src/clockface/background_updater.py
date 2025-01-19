@@ -176,13 +176,11 @@ class BackgroundUpdater:
             array = array.transpose(1, 0, 2)
             source_image = Image.fromarray(array)
             
-            if self.debug:
-                save_debug_image(source_image, "prerender")
-            
             # Generate prompt
             prompt = self.prompt_generator.generate()
             
             if self.debug:
+                save_debug_image(source_image, "prerender")
                 print(f"\nGenerating image with prompt: {prompt}")
             
             # Get generation settings from config

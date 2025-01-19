@@ -2,11 +2,11 @@ display:
   windowed_width: 1024
   windowed_height: 600
   fps: 30
-  background_color: [70, 70, 70]
 render:
   width: 640
   height: 360
-  clip_skip: 1
+  background_color: [70, 70, 70]
+  clip_skip: 0
   background_darkness_variation: 0.2
   checkpoint: models/revAnimated_v2Rebirth.safetensors
   checkpoints:
