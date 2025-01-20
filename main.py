@@ -50,8 +50,8 @@ def main():
         pygame.mouse.set_visible(False)  # Hide cursor only in fullscreen mode
     pygame.display.set_caption("Analog Clock with AI Background")
     
-    # Set a brighter gamma (default is 1.0)
-    pygame.display.set_gamma(1.4)  # Values > 1.0 make it brighter, < 1.0 make it darker
+    # Set gamma from config
+    pygame.display.set_gamma(config.display['gamma'])
 
     # Show splash screen
     splash = pygame.image.load('splash.png')
