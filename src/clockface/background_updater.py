@@ -1,19 +1,15 @@
 import time
 import json
-import torch
-import gc
 from PIL import Image
 from datetime import datetime
 import threading
-from diffusers import AutoencoderKL, ControlNetModel, StableDiffusionControlNetPipeline, DPMSolverMultistepScheduler
-from diffusers.schedulers import AysSchedules
-from compel import Compel
+import pygame
+import random
+import os
 from .prompt_generator import PromptGenerator
 from ..utils.image_utils import save_debug_image
 from ..config import Config
-import random
-import os
-import pygame
+from .diffusion_pipeline import DiffusionPipeline
 
 class BackgroundUpdater:
     def __init__(self, debug=False):
@@ -28,135 +24,12 @@ class BackgroundUpdater:
         self.lock = threading.Lock()
         self.last_attempt = 0
         self.is_updating = False
-        self.is_loading_pipeline = False
         self.update_thread = None
         self.prompt_generator = PromptGenerator()
         
-        # Initialize Diffusers pipeline
-        self._initialize_pipeline()
+        # Initialize pipeline
+        self.pipeline = DiffusionPipeline(debug=debug)
     
-    def _initialize_pipeline(self):
-        """Initialize the Stable Diffusion pipeline with ControlNet"""
-        if self.debug:
-            print("Initializing Stable Diffusion pipeline...")
-        
-        self._load_pipeline()
-
-    def _empty_cache(self):
-        """Properly clean up Python and CUDA memory"""
-        gc.collect()
-        torch.cuda.empty_cache()
-        if self.debug:
-            print("Memory cache cleared")
-
-    def _cleanup_pipeline(self):
-        """Clean up the existing pipeline to free GPU memory"""
-        if hasattr(self, 'pipe'):
-            try:
-                # Delete the main pipeline
-                del self.pipe
-                self.pipe = None
-                # Clean up memory
-                self._empty_cache()
-                # Add small delay to ensure cleanup
-                time.sleep(1)
-            except Exception as e:
-                if self.debug:
-                    print(f"Error cleaning up pipeline: {e}")
-
-    def _load_pipeline(self):
-        """Load the pipeline with current configuration"""
-        # Load VAE
-        vae = AutoencoderKL.from_pretrained(
-            self.config.render['models']['vae'],
-            torch_dtype=torch.float16
-        ).to('cuda')
-        
-        # Load ControlNet
-        controlnet = ControlNetModel.from_pretrained(
-            self.config.render['models']['controlnet'],
-            torch_dtype=torch.float16
-        ).to('cuda')
-        
-        # Load main model
-        self.pipe = StableDiffusionControlNetPipeline.from_single_file(
-            self.config.render['checkpoint'],
-            controlnet=controlnet,
-            torch_dtype=torch.float16,
-            safety_checker=None,
-            generator=torch.Generator(device='cuda'),
-            vae=vae
-        ).to('cuda')
-        self.pipe.enable_model_cpu_offload()
-        
-        # Apply CLIP skip by truncating layers
-        total_layers = len(self.pipe.text_encoder.text_model.encoder.layers)
-        clip_skip = self.config.render.get('clip_skip', 1)
-        layers_to_keep = total_layers - (clip_skip - 1)
-        
-        if self.debug:
-            print(f"Total CLIP layers: {total_layers}, keeping first {layers_to_keep} layers (clip_skip={clip_skip})")
-        
-        if clip_skip > 1:
-            self.pipe.text_encoder.text_model.encoder.layers = self.pipe.text_encoder.text_model.encoder.layers[:layers_to_keep]
-
-        # Set up scheduler
-        scheduler = DPMSolverMultistepScheduler.from_config(
-            self.pipe.scheduler.config,
-            algorithm_type="dpmsolver++",
-            timestep_spacing="trailing",
-            use_karras_sigmas=True,
-        )
-        self.pipe.scheduler = scheduler
-        
-        if self.debug:
-            print("Pipeline initialized successfully")
-
-    def _do_reload_pipeline(self):
-        """Internal method to handle the actual pipeline reload"""
-        try:
-            if self.debug:
-                print("Starting pipeline reload...")
-                
-            # Force cleanup of any ongoing generation
-            if self.is_updating and self.update_thread:
-                self.is_updating = False
-                self.update_thread = None
-            
-            # Now safe to cleanup and reload
-            if self.debug:
-                print("Cleaning up old pipeline...")
-            self._cleanup_pipeline()
-            
-            if self.debug:
-                print("Loading new pipeline...")
-            self._load_pipeline()
-            
-            if self.debug:
-                print("Pipeline reload complete")
-            
-            # Notify completion if callback is set
-            if hasattr(self, 'reload_complete_callback') and self.reload_complete_callback:
-                self.reload_complete_callback()
-        except Exception as e:
-            if hasattr(self, 'reload_error_callback') and self.reload_error_callback:
-                self.reload_error_callback(e)
-            if self.debug:
-                print(f"Error reloading pipeline: {e}")
-
-    def reload_pipeline(self, complete_callback=None, error_callback=None):
-        """Reload the pipeline with new configuration in a separate thread"""
-        self.is_loading_pipeline = True
-        def wrapped_callback():
-            self.is_loading_pipeline = False
-            if complete_callback:
-                complete_callback()
-        self.reload_complete_callback = wrapped_callback
-        self.reload_error_callback = error_callback
-        reload_thread = threading.Thread(target=self._do_reload_pipeline)
-        reload_thread.daemon = True
-        reload_thread.start()
-
     def set_surface_manager(self, surface_manager):
         """Set the surface manager instance"""
         self.surface_manager = surface_manager
@@ -193,34 +66,8 @@ class BackgroundUpdater:
                 save_debug_image(source_image, "prerender")
                 print(f"\nGenerating image with prompt: {prompt}")
             
-            # Get generation settings from config
-            gen_config = self.config.render['generation']
-            
-            # Generate random seed
-            generator = torch.Generator(device='cuda')
-            seed = generator.initial_seed()
-            
-            # Compel prompt
-            compel = Compel(tokenizer=self.pipe.tokenizer, text_encoder=self.pipe.text_encoder)
-            conditioning = compel(prompt)
-
-            negative_conditioning = compel(self.config.prompts['negative_prompt'])
-            [conditioning, negative_conditioning] = compel.pad_conditioning_tensors_to_same_length([conditioning, negative_conditioning])
-                        
-            # Generate image
-            image = self.pipe(
-                prompt_embeds=conditioning,
-                negative_prompt_embeds=negative_conditioning,
-                image=source_image,
-                height=self.config.render['height'],
-                width=self.config.render['width'],
-                controlnet_conditioning_scale=gen_config['controlnet_conditioning_scale'],
-                num_inference_steps=gen_config['num_inference_steps'],
-                guidance_scale=gen_config['guidance_scale'],
-                control_guidance_start=gen_config['control_guidance_start'],
-                control_guidance_end=gen_config['control_guidance_end'],
-                generator=generator
-            ).images[0]
+            # Generate image using pipeline
+            image, seed = self.pipeline.generate(source_image, prompt)
             
             if self.debug:
                 save_debug_image(image, "background")
@@ -232,7 +79,7 @@ class BackgroundUpdater:
                 "seed": seed,
                 "checkpoint": os.path.basename(self.config.render['checkpoint']),
                 "timestamp": datetime.now().isoformat(),
-                "generation_config": gen_config
+                "generation_config": self.config.render['generation']
             }
             
             # Update render request in surface manager
@@ -294,7 +141,7 @@ class BackgroundUpdater:
         current_time = time.time()
         with self.lock:
             # Don't update if we're already updating or if the pipeline is loading
-            if self.is_updating or self.is_loading_pipeline or (current_time - self.last_attempt) < self.update_interval:
+            if self.is_updating or self.pipeline.is_loading or (current_time - self.last_attempt) < self.update_interval:
                 return
                 
             self.is_updating = True
@@ -310,4 +157,8 @@ class BackgroundUpdater:
     
     def should_update(self):
         """Check if it's time for a background update"""
-        return time.time() - self.last_attempt >= self.update_interval 
+        return time.time() - self.last_attempt >= self.update_interval
+    
+    def reload_pipeline(self, complete_callback=None, error_callback=None):
+        """Reload the pipeline with new configuration"""
+        self.pipeline.reload(complete_callback, error_callback) 
