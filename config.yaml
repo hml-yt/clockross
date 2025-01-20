@@ -67,10 +67,15 @@ animation:
 prompts:
   enabled_styles: [digital_art, concept_art, photo, anime, renaissance, painting, watercolor, minimalist, pixel_art]
   negative_prompt: >
-    ugly++, distorted++, deformed++, blurry++, nsfw+++,
-    (worst quality)++, (low quality)++, watermark, signature, text,
-    logo, copyright, noisy, grainy, artifacts,
-    oversaturated, overexposed, high contrast
+    asian, impossible, (worst quality, low quality)++, nude, naked, watermark,  signature,
+    flower, facial marking, (women)++, (female)++,  blue jeans, 3d, render, doll,
+    plastic, blur, haze, monochrome, b&w, text,  (ugly)++, unclear eyes, no arms,
+    bad anatomy, cropped, censoring,  asymmetric eyes, bad anatomy, bad proportions,
+    cropped, cross-eyed,  deformed, extra arms, extra fingers, extra limbs, fused
+    fingers,  jpeg artifacts, malformed, mangled hands, misshapen body, missing arms,  missing
+    fingers, missing hands, missing legs, poorly drawn, tentacle finger,  too many
+    arms, too many fingers, watermark, signature, illustration, painting,  anime,
+    cartoon
   themes: [
     "a tranquil Japanese zen garden", "a futuristic neon cityscape", "a surreal dreamscape", "a vast desert",
     "an icy tundra", "a lush rainforest", "a magical underwater world", "a bustling medieval marketplace",
