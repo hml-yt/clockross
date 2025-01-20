@@ -87,6 +87,7 @@ class BackgroundUpdater:
             generator=torch.Generator(device='cuda'),
             vae=vae
         ).to('cuda')
+        self.pipe.enable_model_cpu_offload()
         
         # Apply CLIP skip by truncating layers
         total_layers = len(self.pipe.text_encoder.text_model.encoder.layers)
