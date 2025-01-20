@@ -177,6 +177,123 @@ class Dialog:
         
         surface.blit(dialog_surface, (dialog_x, dialog_y))
 
+class StylesDialog:
+    def __init__(self, screen_width, screen_height, font):
+        self.screen_width = screen_width
+        self.screen_height = screen_height
+        self.font = font
+        self.visible = False
+        self.padding = 30
+        self.item_height = 50
+        self.header_height = 60  # Increased header space
+        self.config = Config()
+        
+        # Get all available styles and enabled styles
+        self.all_styles = list(self.config.prompts['styles'].keys())
+        self.enabled_styles = self.config.prompts['enabled_styles']
+        
+        # Calculate columns
+        self.num_columns = 2
+        self.column_width = 200
+        self.dialog_width = self.column_width * self.num_columns + self.padding * 3
+        self.items_per_column = (len(self.all_styles) + 1) // 2
+        self.dialog_height = max(self.items_per_column * self.item_height + self.header_height + self.padding * 2, 200)
+        
+    def toggle(self):
+        self.visible = not self.visible
+        
+    def handle_click(self, pos):
+        if not self.visible:
+            return False
+            
+        dialog_x = (self.screen_width - self.dialog_width) // 2
+        dialog_y = (self.screen_height - self.dialog_height) // 2
+        
+        # Check if click is outside dialog
+        if not (dialog_x <= pos[0] <= dialog_x + self.dialog_width and
+                dialog_y <= pos[1] <= dialog_y + self.dialog_height):
+            self.visible = False
+            return True
+            
+        # Check style toggles
+        for i, style in enumerate(self.all_styles):
+            # Calculate column and row
+            column = i // self.items_per_column
+            row = i % self.items_per_column
+            
+            checkbox_x = dialog_x + self.padding + column * (self.column_width + self.padding)
+            checkbox_y = dialog_y + self.header_height + row * self.item_height
+            checkbox_rect = pygame.Rect(checkbox_x, checkbox_y, self.item_height, self.item_height)
+            
+            if checkbox_rect.collidepoint(pos[0], pos[1]):
+                if style in self.enabled_styles:
+                    # Don't allow disabling if it's the last enabled style
+                    if len(self.enabled_styles) > 1:
+                        self.enabled_styles.remove(style)
+                        self.config.prompts['enabled_styles'] = self.enabled_styles
+                        self.config.update('prompts', 'enabled_styles', value=self.enabled_styles)
+                else:
+                    self.enabled_styles.append(style)
+                    self.config.prompts['enabled_styles'] = self.enabled_styles
+                    self.config.update('prompts', 'enabled_styles', value=self.enabled_styles)
+                return True
+                
+        return True
+        
+    def draw(self, surface):
+        if not self.visible:
+            return
+            
+        # Draw darkened overlay
+        overlay = pygame.Surface((self.screen_width, self.screen_height))
+        overlay.fill((0, 0, 0))
+        overlay.set_alpha(180)
+        surface.blit(overlay, (0, 0))
+        
+        # Calculate dialog position
+        dialog_x = (self.screen_width - self.dialog_width) // 2
+        dialog_y = (self.screen_height - self.dialog_height) // 2
+        
+        # Draw dialog background
+        dialog_surface = pygame.Surface((self.dialog_width, self.dialog_height), pygame.SRCALPHA)
+        pygame.draw.rect(dialog_surface, (40, 40, 40, 250), dialog_surface.get_rect())
+        pygame.draw.rect(dialog_surface, (80, 80, 80), dialog_surface.get_rect(), 2)
+        
+        # Draw title
+        title = self.font.render("Enable/Disable Styles", True, (255, 255, 255))
+        title_x = (self.dialog_width - title.get_width()) // 2
+        dialog_surface.blit(title, (title_x, self.padding))
+        
+        # Draw style toggles in columns
+        for i, style in enumerate(self.all_styles):
+            # Calculate column and row
+            column = i // self.items_per_column
+            row = i % self.items_per_column
+            
+            # Calculate position for this item
+            checkbox_x = self.padding + column * (self.column_width + self.padding)
+            checkbox_y = self.header_height + row * self.item_height
+            
+            # Draw checkbox
+            checkbox_rect = pygame.Rect(checkbox_x, checkbox_y, self.item_height, self.item_height)
+            pygame.draw.rect(dialog_surface, (60, 60, 60), checkbox_rect)
+            pygame.draw.rect(dialog_surface, (100, 100, 100), checkbox_rect, 2)
+            
+            # Draw checkmark if enabled
+            if style in self.enabled_styles:
+                checkmark_points = [
+                    (checkbox_x + 10, checkbox_y + 25),
+                    (checkbox_x + 20, checkbox_y + 35),
+                    (checkbox_x + 40, checkbox_y + 15)
+                ]
+                pygame.draw.lines(dialog_surface, (0, 255, 0), False, checkmark_points, 3)
+            
+            # Draw style name
+            style_text = self.font.render(style.replace('_', ' ').title(), True, (255, 255, 255))
+            dialog_surface.blit(style_text, (checkbox_x + self.item_height + 10, checkbox_y + 10))
+        
+        surface.blit(dialog_surface, (dialog_x, dialog_y))
+
 class SettingsUI:
     def __init__(self, screen_width, screen_height, background_updater=None, surface_manager=None):
         self.config = Config()
@@ -234,7 +351,7 @@ class SettingsUI:
                 'name': 'Render Contrast',
                 'key': ('render', 'background_color'),
                 'type': 'select',
-                'value': next(k for k, v in self.contrast_levels.items() if v == self.config.render['background_color']),  # Get current contrast level
+                'value': next(k for k, v in self.contrast_levels.items() if v == self.config.render['background_color']),
                 'options': list(self.contrast_levels.keys())
             },
             {
@@ -245,6 +362,12 @@ class SettingsUI:
                 'description': 'Stable Diffusion model to use',
                 'value': self.config.render['checkpoint'],
                 'options': self.available_models
+            },
+            {
+                'name': 'Styles',
+                'type': 'select',
+                'value': 'Choose styles...',
+                'action': lambda: self.styles_dialog.toggle()
             },
             {
                 'name': 'Save snapshot',
@@ -262,6 +385,9 @@ class SettingsUI:
         self.panel_height = len(self.settings) * self.item_height + 2 * self.padding
         self.panel_x = (screen_width - self.panel_width) // 2
         self.panel_y = (screen_height - self.panel_height) // 2
+
+        # Add styles dialog
+        self.styles_dialog = StylesDialog(screen_width, screen_height, self.font)
 
     def handle_shutdown(self, confirmed):
         """Handle shutdown confirmation"""
@@ -297,6 +423,10 @@ class SettingsUI:
     
     def handle_click(self, pos):
         """Handle click events in the settings UI"""
+        # First check if styles dialog handles the click
+        if self.styles_dialog.visible:
+            return self.styles_dialog.handle_click(pos)
+            
         # Check if dialog is visible and handle its clicks first
         if self.dialog.visible:
             return self.dialog.handle_click(pos)
@@ -315,23 +445,30 @@ class SettingsUI:
                 
                 if item_rect.collidepoint(pos[0], pos[1]):
                     if setting['type'] == 'select' or setting['type'] == 'dropdown':
+                        if 'action' in setting:
+                            setting['action']()
+                            return True
+                            
                         current_value = setting['value']
                         current_index = setting['options'].index(current_value)
                         next_index = (current_index + 1) % len(setting['options'])
-                        setting['value'] = setting['options'][next_index]
+                        new_value = setting['options'][next_index]
                         
-                        # Update config
-                        section, key = setting['key']
-                        if key == 'background_color':
-                            # Convert contrast level to RGB
-                            rgb_value = self.contrast_levels[setting['value']]
-                            self.config.update(section, key, value=rgb_value)
-                        else:
-                            self.config.update(section, key, value=setting['value'])
-                        
-                        # Special handling for checkpoint change
-                        if section == 'render' and key == 'checkpoint':
-                            self.checkpoint_changed = True
+                        if new_value != current_value:  # Only update if value changed
+                            setting['value'] = new_value
+                            
+                            # Update config
+                            section, key = setting['key']
+                            if key == 'background_color':
+                                # Convert contrast level to RGB
+                                rgb_value = self.contrast_levels[setting['value']]
+                                self.config.update(section, key, value=rgb_value)
+                            else:
+                                self.config.update(section, key, value=setting['value'])
+                            
+                            # Special handling for checkpoint change
+                            if section == 'render' and key == 'checkpoint':
+                                self.checkpoint_changed = True
                         
                     elif setting['type'] == 'bool':
                         setting['value'] = not setting['value']
@@ -342,6 +479,9 @@ class SettingsUI:
                         self.visible = False
                         self.show_notification("Saving snapshot...", duration=2)
                         self.take_screenshot()
+                        
+                    elif setting['type'] == 'button' and 'action' in setting:
+                        setting['action']()
                         
                     elif setting['type'] == 'system_row':
                         option_width = (self.panel_width - 3 * self.padding) // 2
@@ -414,8 +554,8 @@ class SettingsUI:
                     text_x = self.padding * 2 + button_width + (button_width - restart_text.get_width()) // 2
                     text_y = button_y + (button_height - restart_text.get_height()) // 2
                     panel_surface.blit(restart_text, (text_x, text_y))
-                elif setting['type'] == 'action':
-                    # Draw action button
+                elif setting['type'] == 'action' or setting['type'] == 'button':
+                    # Draw action/button button
                     button_rect = pygame.Rect(
                         self.padding,
                         self.padding + i * self.item_height + 5,
@@ -457,6 +597,9 @@ class SettingsUI:
             
             # Draw dialog if visible
             self.dialog.draw(surface)
+            
+            # Draw styles dialog on top if visible
+            self.styles_dialog.draw(surface)
         
         # Draw notification if active
         if self.notification:
