@@ -66,6 +66,14 @@ animation:
     poly_sigma: 1.2
     flags: 256
 prompts:
+  use_enhanced_prompts: true
+  enhancer:
+    model: "prithivMLmods/Stark-Prompt-Extender"
+    max_length: 100
+    temperature: 0.9
+    top_p: 0.9
+    num_return_sequences: 1
+    do_sample: true
   enabled_styles: [digital_art, concept_art, photo, anime, renaissance, painting, watercolor, minimalist, pixel_art]
   negative_prompt: >
     asian, impossible, (worst quality, low quality)++, nude, naked, watermark,  signature,
@@ -94,6 +102,12 @@ prompts:
     "over a frozen ocean", "with towering shelves of glowing books"
   ]
   styles:
+    cinematic:
+      details: [
+        "cinematic lighting", "cinematic composition", "cinematic atmosphere", "cinematic style", "cinematic colors",
+        "cinematic camera angles", "cinematic depth of field", "cinematic focus", "cinematic motion blur",
+      ]
+      awards: ["Oscar Nominated", "Best Visual Effects Award"]
     digital_art:
       details: [
         "ultra-detailed", "dramatic atmosphere", "vibrant and colorful", "exotic and imaginative", "high-tech and sleek",

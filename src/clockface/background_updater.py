@@ -8,6 +8,7 @@ import random
 import os
 from .prompt_generator import PromptGenerator
 from ..utils.image_utils import save_debug_image
+from ..utils.device_utils import get_best_device
 from ..config import Config
 from .diffusion_pipeline import DiffusionPipeline
 
