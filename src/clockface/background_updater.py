@@ -54,10 +54,9 @@ class BackgroundUpdater:
     def _get_background_image(self, hands_surface):
         """Generate a new background image using Stable Diffusion with ControlNet"""
         start_time = time.time()
-        prompt_start = None
-        prompt_end = None
         generation_start = None
         generation_end = None
+        enhancement_time = 0.0
         
         try:
             # Convert pygame surface (RGB) to PIL Image
@@ -66,14 +65,8 @@ class BackgroundUpdater:
             array = array.transpose(1, 0, 2)
             source_image = Image.fromarray(array)
             
-            # Wait for prompt generator to be ready
-            while not self.prompt_generator.is_ready():
-                time.sleep(0.1)  # Short sleep to prevent CPU spinning
-            
-            # Generate prompt
-            prompt_start = time.time()
-            prompt = self.prompt_generator.generate()
-            prompt_end = time.time()
+            # Generate prompt (this includes queueing and waiting for enhancement)
+            prompt, enhancement_time = self.prompt_generator.generate()
             
             if self.debug:
                 save_debug_image(source_image, "prerender")
@@ -103,10 +96,10 @@ class BackgroundUpdater:
             
             # Log timing information
             total_time = time.time() - start_time
-            prompt_time = prompt_end - prompt_start if prompt_start and prompt_end else 0
             generation_time = generation_end - generation_start if generation_start and generation_end else 0
-            other_time = total_time - prompt_time - generation_time
-            print(f"Background update completed in {total_time:.2f}s (prompt: {prompt_time:.2f}s, generation: {generation_time:.2f}s, other: {other_time:.2f}s)")
+            # Other time is what's left after generation (enhancement happens concurrently)
+            other_time = total_time - generation_time
+            print(f"Background update completed in {total_time:.2f}s (prompt enhancement: {enhancement_time:.2f}s, generation: {generation_time:.2f}s, other: {other_time:.2f}s)")
             
             return image
             

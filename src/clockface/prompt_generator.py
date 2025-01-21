@@ -15,7 +15,10 @@ class PromptStrategy(ABC):
 
     @abstractmethod
     def generate(self, theme, description, style, style_details):
-        """Generate a prompt using the specific strategy"""
+        """Generate a prompt using the specific strategy
+        Returns:
+            tuple: (prompt, enhancement_time)
+        """
         pass
 
 class ClassicPromptStrategy(PromptStrategy):
@@ -25,7 +28,8 @@ class ClassicPromptStrategy(PromptStrategy):
         selected_resolutions = random.sample(self.prompt_config['resolutions'], k=random.randint(1, len(self.prompt_config['resolutions'])))
         selected_award = random.choice(style_details['awards'])
         
-        return f"{theme}, {description}, {', '.join(selected_details)}, {', '.join(selected_resolutions)}, {selected_award}"
+        prompt = f"{theme}, {description}, {', '.join(selected_details)}, {', '.join(selected_resolutions)}, {selected_award}"
+        return prompt, 0.0  # No enhancement time for classic strategy
 
 class EnhancedPromptStrategy(PromptStrategy):
     """AI-enhanced prompt generation strategy using language model"""
@@ -37,6 +41,8 @@ class EnhancedPromptStrategy(PromptStrategy):
         self.enhancer_thread = None
         self.is_running = False
         self.is_enhancing = threading.Event()  # Track if enhancement is in progress
+        self.enhancement_start_time = None  # Track when enhancement started
+        self.enhancement_time = None  # Track how long enhancement took
         self._start_enhancer_thread()
     
     def _start_enhancer_thread(self):
@@ -52,6 +58,7 @@ class EnhancedPromptStrategy(PromptStrategy):
             try:
                 base_prompt = self.prompt_queue.get(timeout=1.0)
                 self.is_enhancing.set()  # Mark enhancement as in progress
+                self.enhancement_start_time = time.time()
                 
                 extender = self._get_prompt_extender()
                 enhancer_config = self.prompt_config['enhancer']
@@ -67,7 +74,10 @@ class EnhancedPromptStrategy(PromptStrategy):
                     truncation=True
                 )[0]['generated_text']
                 
-                self.enhanced_prompts.put(enhanced_prompt)
+                self.enhancement_time = time.time() - self.enhancement_start_time
+                print(f"Prompt enhancement took {self.enhancement_time:.2f}s")
+                
+                self.enhanced_prompts.put((enhanced_prompt, self.enhancement_time))
                 self.prompt_queue.task_done()
                 self.is_enhancing.clear()  # Mark enhancement as complete
             except queue.Empty:
@@ -75,7 +85,7 @@ class EnhancedPromptStrategy(PromptStrategy):
             except Exception as e:
                 print(f"Error enhancing prompt: {e}")
                 # Put the original prompt back in case of error
-                self.enhanced_prompts.put(base_prompt)
+                self.enhanced_prompts.put((base_prompt, 0))
                 self.prompt_queue.task_done()
                 self.is_enhancing.clear()  # Mark enhancement as complete even on error
     
@@ -92,18 +102,21 @@ class EnhancedPromptStrategy(PromptStrategy):
     def generate(self, theme, description, style, style_details):
         """Generate a prompt using the AI-enhanced strategy"""
         base_prompt = f"{style} of {theme}, {description}"
+        queue_start = time.time()
         
         # Queue the base prompt for enhancement
         self.prompt_queue.put(base_prompt)
         
         # Wait for enhanced prompt with a timeout
         try:
-            enhanced_prompt = self.enhanced_prompts.get(timeout=self.prompt_config['enhancer']['max_time'] + 1.0)
+            enhanced_prompt, enhancement_time = self.enhanced_prompts.get(timeout=self.prompt_config['enhancer']['max_time'] + 1.0)
+            queue_time = time.time() - queue_start
+            print(f"Prompt queue wait took {queue_time:.2f}s")
             self.enhanced_prompts.task_done()
-            return enhanced_prompt
+            return enhanced_prompt, enhancement_time
         except queue.Empty:
             print("Warning: Prompt enhancement timed out, using base prompt")
-            return base_prompt
+            return base_prompt, 0.0
     
     def is_ready(self):
         """Check if the prompt generator is ready (not currently enhancing a prompt)"""
@@ -136,9 +149,9 @@ class PromptGenerator:
         style = random.choice(self.prompt_config['enabled_styles'])
         style_details = self.prompt_config['styles'][style]
         
-        prompt = self.strategy.generate(theme, description, style, style_details)
+        prompt, enhancement_time = self.strategy.generate(theme, description, style, style_details)
         print(f"\nGenerated prompt: {prompt}")
-        return prompt
+        return prompt, enhancement_time
     
     def is_ready(self):
         """Check if the prompt generator is ready for the next prompt"""
