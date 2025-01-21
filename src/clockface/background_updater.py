@@ -53,6 +53,12 @@ class BackgroundUpdater:
     
     def _get_background_image(self, hands_surface):
         """Generate a new background image using Stable Diffusion with ControlNet"""
+        start_time = time.time()
+        prompt_start = None
+        prompt_end = None
+        generation_start = None
+        generation_end = None
+        
         try:
             # Convert pygame surface (RGB) to PIL Image
             array = pygame.surfarray.array3d(hands_surface)
@@ -65,14 +71,18 @@ class BackgroundUpdater:
                 time.sleep(0.1)  # Short sleep to prevent CPU spinning
             
             # Generate prompt
+            prompt_start = time.time()
             prompt = self.prompt_generator.generate()
+            prompt_end = time.time()
             
             if self.debug:
                 save_debug_image(source_image, "prerender")
                 print(f"\nGenerating image with prompt: {prompt}")
             
             # Generate image using pipeline
+            generation_start = time.time()
             image, seed = self.pipeline.generate(source_image, prompt)
+            generation_end = time.time()
             
             if self.debug:
                 save_debug_image(image, "background")
@@ -91,10 +101,18 @@ class BackgroundUpdater:
             if self.surface_manager:
                 self.surface_manager.update_render_request(metadata)
             
+            # Log timing information
+            total_time = time.time() - start_time
+            prompt_time = prompt_end - prompt_start if prompt_start and prompt_end else 0
+            generation_time = generation_end - generation_start if generation_start and generation_end else 0
+            other_time = total_time - prompt_time - generation_time
+            print(f"Background update completed in {total_time:.2f}s (prompt: {prompt_time:.2f}s, generation: {generation_time:.2f}s, other: {other_time:.2f}s)")
+            
             return image
             
         except Exception as e:
-            print(f"Error: Failed to generate image: {e}")
+            total_time = time.time() - start_time
+            print(f"Background update failed after {total_time:.2f}s: {e}")
             return None
     
     def _do_update(self, hands_surface):
