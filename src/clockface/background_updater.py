@@ -60,6 +60,10 @@ class BackgroundUpdater:
             array = array.transpose(1, 0, 2)
             source_image = Image.fromarray(array)
             
+            # Wait for prompt generator to be ready
+            while not self.prompt_generator.is_ready():
+                time.sleep(0.1)  # Short sleep to prevent CPU spinning
+            
             # Generate prompt
             prompt = self.prompt_generator.generate()
             
