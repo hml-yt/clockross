@@ -48,10 +48,12 @@ class EnhancedPromptStrategy(PromptStrategy):
         enhanced_prompt = extender(
             base_prompt,
             max_length=enhancer_config['max_length'],
+            max_time=enhancer_config['max_time'],
             num_return_sequences=enhancer_config['num_return_sequences'],
             temperature=enhancer_config['temperature'],
             top_p=enhancer_config['top_p'],
-            do_sample=enhancer_config['do_sample']
+            do_sample=enhancer_config['do_sample'],
+            truncation=True
         )[0]['generated_text']
         
         return enhanced_prompt

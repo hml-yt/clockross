@@ -70,6 +70,7 @@ prompts:
   enhancer:
     model: "prithivMLmods/Stark-Prompt-Extender"
     max_length: 100
+    max_time: 3
     temperature: 0.9
     top_p: 0.9
     num_return_sequences: 1
