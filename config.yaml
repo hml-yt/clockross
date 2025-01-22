@@ -41,18 +41,19 @@ system:
 clock:
   radius_margin: 20
   marker_length: 30
-  hour_hand_length_ratio: 0.7
+  hour_hand_length_ratio: 0.5
   minute_hand_length_ratio: 0.9
   second_hand_length_ratio: 0.9
   numbered_hand_reduction: 0.2
   overlay_opacity: 75
-  minute_hand_opacity: 128
+  hour_hand_value: 228
+  minute_hand_value: 255
   hour_hand_width: [24, 1]
   minute_hand_width: [16, 1]
   second_hand_width: [4, 1]
   marker_width: 3
   use_numbers: true
-  font_size: 36
+  font_size: 25
   display_mode: render_only
 animation:
   transition_duration: 3.0
@@ -72,7 +73,7 @@ prompts:
     max_length: 100
     max_time: 5
     temperature: 0.9
-    top_p: 0.9
+    top_p: 0.4
     num_return_sequences: 1
     do_sample: true
   enabled_styles: [digital_art, concept_art, photo, anime, renaissance, painting, watercolor, minimalist, pixel_art]

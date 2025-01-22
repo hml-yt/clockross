@@ -120,10 +120,10 @@ def main():
         if bg_surface:
             screen.blit(bg_surface, (0, 0))
         
-        # Clear overlay surface
+        # Clear overlay surface to fully transparent
         display_clock_face.overlay_surface.fill((0, 0, 0, 0))
         
-        # Draw clock overlay (circle and markers) if configured
+        # Draw clock overlay (circle and markers) with solid white
         display_clock_face.draw_clock_overlay(display_clock_face.overlay_surface)
         
         # Draw seconds hand on overlay with dominant color
@@ -133,7 +133,8 @@ def main():
             background_updater.get_dominant_color()
         )
         
-        # Draw overlay
+        # Set the alpha for the entire overlay surface when blitting to screen
+        display_clock_face.overlay_surface.set_alpha(config.clock['overlay_opacity'])
         screen.blit(display_clock_face.overlay_surface, (0, 0))
         
         # Draw settings UI
