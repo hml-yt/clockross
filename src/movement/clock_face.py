@@ -190,14 +190,16 @@ class ClockFace:
         hw = self.config.clock['hour_hand_width']
         self.draw_tapered_line(self.render_surface, self.white, self.center, hour_end, hw[0], hw[1])
         
-        # Minute hand
+        # Minute hand - use custom opacity if set
         minute_angle = math.radians(minutes * 360 / 60 - 90)
         minute_end = (
             self.center[0] + self.minute_hand_length * math.cos(minute_angle),
             self.center[1] + self.minute_hand_length * math.sin(minute_angle)
         )
         mw = self.config.clock['minute_hand_width']
-        self.draw_tapered_line(self.render_surface, self.white, self.center, minute_end, mw[0], mw[1])
+        minute_opacity = self.config.clock.get('minute_hand_opacity', self.config.clock['overlay_opacity'])
+        minute_color = (255, 255, 255, minute_opacity)
+        self.draw_tapered_line(self.render_surface, minute_color, self.center, minute_end, mw[0], mw[1])
         
         # Draw center dot
         pygame.draw.circle(self.render_surface, self.white, self.center, 10)

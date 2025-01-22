@@ -46,6 +46,7 @@ clock:
   second_hand_length_ratio: 0.9
   numbered_hand_reduction: 0.2
   overlay_opacity: 75
+  minute_hand_opacity: 128
   hour_hand_width: [24, 1]
   minute_hand_width: [16, 1]
   second_hand_width: [4, 1]
