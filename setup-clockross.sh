@@ -89,7 +89,7 @@ Environment=XAUTHORITY=/home/$SUDO_USER/.Xauthority
 User=$SUDO_USER
 Group=$SUDO_USER
 WorkingDirectory=$INSTALL_DIR
-ExecStartPre=/bin/bash -c "/usr/bin/X :0 -quiet &"
+ExecStartPre=/bin/bash -c "/usr/bin/X :0 -gamma 1.2 -quiet &"
 ExecStart=/bin/bash -c "source $INSTALL_DIR/venv/bin/activate && python main.py"
 Restart=on-failure
 RestartSec=10
