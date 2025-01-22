@@ -67,28 +67,28 @@ class DiffusionPipeline:
         # Load VAE
         vae = AutoencoderKL.from_pretrained(
             self.config.render['models']['vae'],
-            torch_dtype=torch.float16 if self.device == "cuda" else torch.float32
+            torch_dtype=torch.float16
         ).to(self.device)
         
         # Load ControlNet
         controlnet = ControlNetModel.from_pretrained(
             self.config.render['models']['controlnet'],
-            torch_dtype=torch.float16 if self.device == "cuda" else torch.float32
+            torch_dtype=torch.float16
         ).to(self.device)
         
         # Load main model
         self.pipe = StableDiffusionControlNetPipeline.from_single_file(
             self.config.render['checkpoint'],
             controlnet=controlnet,
-            torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+            torch_dtype=torch.float16,
             safety_checker=None,
             generator=torch.Generator(device=self.device),
             vae=vae
         ).to(self.device)
 
-        # Only enable CPU offload for CUDA devices
+        # Enable memory efficient attention
         if self.device == "cuda":
-            self.pipe.enable_model_cpu_offload()
+            self.pipe.enable_xformers_memory_efficient_attention()
         
         # Apply CLIP skip by truncating layers
         total_layers = len(self.pipe.text_encoder.text_model.encoder.layers)
