@@ -1,10 +1,10 @@
 import random
 from abc import ABC, abstractmethod
+
+import torch
 from ..config import Config
-from transformers import pipeline
+from transformers import AutoModelForCausalLM, AutoTokenizer
 from ..utils.device_utils import get_best_device
-import threading
-import queue
 import time
 
 class PromptStrategy(ABC):
@@ -35,98 +35,70 @@ class EnhancedPromptStrategy(PromptStrategy):
     """AI-enhanced prompt generation strategy using language model"""
     def __init__(self, config):
         super().__init__(config)
-        self.prompt_extender = None
-        self.prompt_queue = queue.Queue()
-        self.enhanced_prompts = queue.Queue()
-        self.enhancer_thread = None
-        self.is_running = False
-        self.is_enhancing = threading.Event()  # Track if enhancement is in progress
-        self.enhancement_start_time = None  # Track when enhancement started
-        self.enhancement_time = None  # Track how long enhancement took
-        self._start_enhancer_thread()
+        self.model = None
+        self.tokenizer = None
     
-    def _start_enhancer_thread(self):
-        """Start the background thread for prompt enhancement"""
-        if not self.is_running:
-            self.is_running = True
-            self.enhancer_thread = threading.Thread(target=self._enhance_prompts_worker, daemon=True)
-            self.enhancer_thread.start()
-    
-    def _enhance_prompts_worker(self):
-        """Worker thread that processes prompts in the background"""
-        while self.is_running:
-            try:
-                base_prompt = self.prompt_queue.get(timeout=1.0)
-                self.is_enhancing.set()  # Mark enhancement as in progress
-                self.enhancement_start_time = time.time()
-                
-                extender = self._get_prompt_extender()
-                enhancer_config = self.prompt_config['enhancer']
-                
-                enhanced_prompt = extender(
-                    base_prompt,
-                    max_length=enhancer_config['max_length'],
-                    max_time=enhancer_config['max_time'],
-                    num_return_sequences=enhancer_config['num_return_sequences'],
-                    temperature=enhancer_config['temperature'],
-                    top_p=enhancer_config['top_p'],
-                    do_sample=enhancer_config['do_sample'],
-                    truncation=True
-                )[0]['generated_text']
-                
-                self.enhancement_time = time.time() - self.enhancement_start_time
-                print(f"Prompt enhancement took {self.enhancement_time:.2f}s")
-                
-                self.enhanced_prompts.put((enhanced_prompt, self.enhancement_time))
-                self.prompt_queue.task_done()
-                self.is_enhancing.clear()  # Mark enhancement as complete
-            except queue.Empty:
-                continue
-            except Exception as e:
-                print(f"Error enhancing prompt: {e}")
-                # Put the original prompt back in case of error
-                self.enhanced_prompts.put((base_prompt, 0))
-                self.prompt_queue.task_done()
-                self.is_enhancing.clear()  # Mark enhancement as complete even on error
-    
-    def _get_prompt_extender(self):
-        if self.prompt_extender is None:
+    def _initialize_model(self):
+        if self.model is None or self.tokenizer is None:
             enhancer_config = self.prompt_config['enhancer']
-            self.prompt_extender = pipeline(
-                "text-generation",
-                model=enhancer_config['model'],
-                device=get_best_device()
+            device = get_best_device()
+            
+            if device == "cuda":
+                model_kwargs = {
+                    "attn_implementation": "flash_attention_2",
+                    "torch_dtype": torch.float16,
+                    "device_map": "auto",
+                    "use_cache": True,
+                }
+            else:
+                model_kwargs = {}
+            
+            self.model = AutoModelForCausalLM.from_pretrained(
+                enhancer_config['model'],
+                **model_kwargs
             )
-        return self.prompt_extender
+            self.tokenizer = AutoTokenizer.from_pretrained(enhancer_config['model'])
+            
+            if device == "cuda":
+                self.model = self.model.to(device)
     
     def generate(self, theme, description, style, style_details):
         """Generate a prompt using the AI-enhanced strategy"""
         base_prompt = f"{style} of {theme}, {description}"
-        queue_start = time.time()
+        start_time = time.time()
         
-        # Queue the base prompt for enhancement
-        self.prompt_queue.put(base_prompt)
-        
-        # Wait for enhanced prompt with a timeout
         try:
-            enhanced_prompt, enhancement_time = self.enhanced_prompts.get(timeout=self.prompt_config['enhancer']['max_time'] + 1.0)
-            queue_time = time.time() - queue_start
-            print(f"Prompt queue wait took {queue_time:.2f}s")
-            self.enhanced_prompts.task_done()
+            self._initialize_model()
+            enhancer_config = self.prompt_config['enhancer']
+            
+            inputs = self.tokenizer(base_prompt, return_tensors="pt")
+            if torch.cuda.is_available():
+                inputs = {k: v.cuda() for k, v in inputs.items()}
+            
+            gen_tokens = self.model.generate(
+                **inputs,
+                max_length=enhancer_config['max_length'],
+                max_time=enhancer_config['max_time'],
+                num_return_sequences=enhancer_config['num_return_sequences'],
+                temperature=enhancer_config['temperature'],
+                top_p=enhancer_config['top_p'],
+                do_sample=enhancer_config['do_sample'],
+                pad_token_id=self.tokenizer.eos_token_id
+            )
+            
+            enhanced_prompt = self.tokenizer.batch_decode(gen_tokens, skip_special_tokens=True)[0]
+            
+            enhancement_time = time.time() - start_time
+            print(f"Prompt enhancement took {enhancement_time:.2f}s")
+            
             return enhanced_prompt, enhancement_time
-        except queue.Empty:
-            print("Warning: Prompt enhancement timed out, using base prompt")
+        except Exception as e:
+            print(f"Error enhancing prompt: {e}")
             return base_prompt, 0.0
     
     def is_ready(self):
         """Check if the prompt generator is ready (not currently enhancing a prompt)"""
-        return not self.is_enhancing.is_set()
-    
-    def __del__(self):
-        """Cleanup when the object is destroyed"""
-        self.is_running = False
-        if self.enhancer_thread and self.enhancer_thread.is_alive():
-            self.enhancer_thread.join(timeout=1.0)
+        return True  # Always ready since we're not using queues anymore
 
 class PromptStrategyFactory:
     """Factory class for creating prompt generation strategies"""
