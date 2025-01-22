@@ -45,11 +45,20 @@ class ClockFace:
         self.transparent_white = (255, 255, 255, self.config.clock['overlay_opacity'])
         
         # Create surfaces
-        self.render_surface = pygame.Surface((width, height))  # RGB for diffusion
+        self.render_surface = pygame.Surface((width, height), pygame.SRCALPHA)  # RGBA for diffusion
         self.overlay_surface = pygame.Surface((width, height), pygame.SRCALPHA)  # RGBA for overlay
         
         # Initialize font for numbers
-        self.font = pygame.font.Font(None, self.config.clock['font_size'])
+        try:
+            # Try to use Arial first, fall back to system default if not available
+            self.font = pygame.font.SysFont('arial', self.config.clock['font_size'])
+            # Test if the font renders properly
+            test_render = self.font.render('12', True, (255, 255, 255))
+            if not test_render:
+                raise Exception("Font not rendering properly")
+        except:
+            # Fall back to default font if Arial is not available
+            self.font = pygame.font.Font(None, self.config.clock['font_size'])
         
         # Update background color with random variation
         self._update_background_color()
@@ -64,7 +73,7 @@ class ClockFace:
         
         # Apply factor to base color, ensuring it stays within 0-255
         varied_color = max(0, min(255, int(base_color * factor)))
-        self.gray = (varied_color, varied_color, varied_color)
+        self.gray = (varied_color, varied_color, varied_color, 255)  # Added alpha channel
 
     def _update_hand_lengths(self):
         """Update hand lengths based on whether numbers are being used"""
@@ -117,16 +126,20 @@ class ClockFace:
             
             # Create text surface
             if is_overlay:
+                # Simple direct rendering with no background
                 text = self.font.render(str(hour_num), True, (255, 255, 255))
-                # Create a surface with per-pixel alpha
-                alpha_surface = pygame.Surface(text.get_size(), pygame.SRCALPHA)
-                # Fill with transparent color using the overlay opacity
-                alpha_surface.fill((255, 255, 255, self.config.clock['overlay_opacity']))
-                # Blit using the text as a mask
-                alpha_surface.blit(text, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
-                text = alpha_surface
+                # Convert surface to include alpha channel if it doesn't already
+                if text.get_flags() & pygame.SRCALPHA == 0:
+                    alpha_surface = pygame.Surface(text.get_size(), pygame.SRCALPHA)
+                    alpha_surface.fill((0, 0, 0, 0))  # Fill with transparent black
+                    alpha_surface.blit(text, (0, 0))
+                    text = alpha_surface
             else:
-                text = self.font.render(str(hour_num), True, color)
+                # For screen display, create a surface with alpha channel
+                text = pygame.Surface(self.font.size(str(hour_num)), pygame.SRCALPHA)
+                text.fill((0, 0, 0, 0))  # Fill with transparent black
+                rendered_text = self.font.render(str(hour_num), True, (255, 255, 255, self.config.clock['overlay_opacity']))
+                text.blit(rendered_text, (0, 0))
             
             # Rotate the text
             rotation_angle = math.degrees(angle) + 90  # Add 90 to align text properly
@@ -196,13 +209,22 @@ class ClockFace:
         # Draw outer circle and markers on screen based on display mode
         display_mode = self.config.clock['display_mode']
         if display_mode in ['screen_only', 'both']:
+            # Create a temporary surface for full opacity rendering
+            temp_surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+            
             # Draw outer circle
-            pygame.draw.circle(surface, self.transparent_white, self.center, self.clock_radius, 
+            pygame.draw.circle(temp_surface, (255, 255, 255), self.center, self.clock_radius, 
                              self.config.clock['marker_width'])
             
             # Draw hour markers or numbers
             for hour in range(12):
-                self.draw_hour_marker(surface, hour, self.transparent_white, is_overlay=True)
+                self.draw_hour_marker(temp_surface, hour, (255, 255, 255), is_overlay=False)
+            
+            # Set the alpha for the entire surface
+            temp_surface.set_alpha(self.config.clock['overlay_opacity'])
+            
+            # Blit the temporary surface onto the target surface
+            surface.blit(temp_surface, (0, 0))
 
     def draw_seconds_hand(self, surface, seconds, color):
         """Draw the seconds hand with the given color"""

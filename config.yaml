@@ -51,7 +51,7 @@ clock:
   second_hand_width: [4, 1]
   marker_width: 3
   use_numbers: true
-  font_size: 36
+  font_size: 58
   display_mode: render_only
 animation:
   transition_duration: 3.0
