@@ -11,3 +11,4 @@ xformers
 torch>=2.0.0 
 triton
 compel
+flash-attn>=2.0.0
