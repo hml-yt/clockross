@@ -1,113 +1,196 @@
-# AI-Powered Analog Clock
+# ClockRoss - AI-Powered Analog Clock
 
-An elegant analog clock application that uses Stable Diffusion AI to generate dynamic, artistic backgrounds that change every 15 seconds. The clock features a clean, modern design with smooth animations and semi-transparent overlays that adapt to the generated background.
+An elegant analog clock application that uses local Stable Diffusion (via Diffusers) with ControlNet to generate dynamic, artistic backgrounds. The clock features a clean, modern design with smooth animations and semi-transparent overlays that adapt to the generated background. Prompts are enhanced using GPT-2 for more creative and coherent results.
 
 ## Features
 
-- Real-time analog clock with hour, minute, and second hands
-- AI-generated backgrounds using Stable Diffusion
-- Dynamic color adaptation based on the generated background
+- Real-time analog clock with customizable movement styles
+- Local AI background generation using Hugging Face Diffusers with ControlNet
+- GPT-2 enhanced prompt generation system
+- 20-second background refresh interval
 - Smooth animations and transitions
-- High-resolution display (1024x600) with optimized API rendering (640x360)
-- Debug mode for development and troubleshooting
+- High-resolution display (1024x600) with optimized generation resolution (640x360)
+- Comprehensive debug mode for development
+- Dual configuration system (global and local)
+- Multiple clock face and movement styles
+- Support for both CUDA (NVIDIA) and MPS (Apple Silicon) acceleration
+- Flexible display modes (fullscreen or windowed)
 
 ## Project Structure
 
 ```
 .
 ├── src/
-│   ├── clock/
-│   │   ├── __init__.py
+│   ├── clockface/           # Clock face rendering and management
+│   │   ├── surface_manager.py
+│   │   ├── prompt_generator.py
+│   │   ├── diffusion_pipeline.py
+│   │   └── background_updater.py
+│   ├── movement/            # Clock movement and animations
 │   │   └── clock_face.py
-│   ├── background/
-│   │   ├── __init__.py
-│   │   ├── background_updater.py
-│   │   └── prompt_generator.py
-│   ├── utils/
-│   │   ├── __init__.py
-│   │   └── image_utils.py
+│   ├── settings/           # Application settings
+│   ├── utils/             # Utility functions
+│   ├── config.py          # Core configuration
 │   └── __init__.py
-├── main.py
-├── api_payload.json
-├── requirements.txt
+├── main.py                # Application entry point
+├── config.yaml           # Global configuration file
+├── local_config.yaml     # Local overrides and sensitive settings
+├── setup-clockross.sh    # Setup script
+├── requirements.txt      # Python dependencies
 └── README.md
 ```
 
 ## Requirements
 
 - Python 3.8 or higher
-- Stable Diffusion API endpoint
+- One of:
+  - CUDA-capable GPU (NVIDIA, recommended)
+  - Apple Silicon processor (M1 or newer)
 - Dependencies listed in requirements.txt
+- Minimum requirements:
+  - NVIDIA: 8GB GPU VRAM
+  - Apple Silicon: 16GB unified memory recommended
 
 ## Installation
 
 1. Clone the repository
-2. Create a virtual environment:
+2. Run the setup script:
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ./setup-clockross.sh
    ```
-3. Install dependencies:
+   This will:
+   - Create a virtual environment
+   - Install dependencies
+   - Configure initial settings
+   - Download required models (Stable Diffusion, ControlNet, GPT-2)
+   - Create a template local_config.yaml
+   - Detect and configure appropriate acceleration (CUDA/MPS)
+
+Note: For Jetson Orin Nano devices, use the setup script above for standard installation.
+
+## Development Setup
+
+For development purposes, follow these steps instead:
+
+1. Create a Python 3.10 virtual environment:
+   ```bash
+   python3.10 -m venv venv
+   ```
+
+2. Activate the virtual environment:
+   ```bash
+   # On Unix/macOS
+   source venv/bin/activate
+   # On Windows
+   .\venv\Scripts\activate
+   ```
+
+3. Install dependencies and run the application:
    ```bash
    pip install -r requirements.txt
+   python main.py [options]
    ```
-4. Configure your Stable Diffusion API endpoint in main.py
-5. Ensure api_payload.json is properly configured for your Stable Diffusion setup
-6. Set up system permissions:
-   ```bash
-   # Create a new sudoers file for the application
-   sudo visudo -f /etc/sudoers.d/clockross
-   
-   # Add this line (replace USER_NAME with your username):
-   USER_NAME ALL=(ALL) NOPASSWD: /sbin/shutdown
-   
-   # Set proper permissions
-   sudo chmod 440 /etc/sudoers.d/clockross
-   ```
-   This allows the application to use shutdown/restart commands from the settings menu.
 
 ## Usage
 
 Run the application:
 ```bash
-python main.py [--debug]
+python main.py [options]
 ```
 
 Options:
-- `--debug`: Enable debug mode to save debug images and show verbose output
+- `--debug`: Enable debug mode (saves debug images and shows verbose output)
+- `--windowed`: Run in windowed mode instead of fullscreen
 
-The clock will start and automatically generate new backgrounds every 15 seconds.
+The application automatically selects the best available hardware acceleration:
+- CUDA on systems with NVIDIA GPUs
+- MPS on Apple Silicon devices
+- CPU as fallback when no acceleration is available
 
 ## Configuration
 
-- The Stable Diffusion API endpoint can be configured in main.py
-- Display resolution (1024x600) and API resolution (640x360) can be adjusted in main.py
-- Background update interval (15 seconds) can be modified in main.py
-- Prompt generation parameters can be modified in src/background/prompt_generator.py
+The application uses a dual configuration system:
 
-## Resolution Settings
+### Global Configuration (config.yaml)
+- Display settings (resolution, transparency)
+- Model parameters and pipeline settings
+- ControlNet configuration
+- GPT-2 prompt generation and enhancement settings
+- Clock face styles and movement patterns
+- Background update intervals (20s default)
+- Debug settings
+- Hardware acceleration settings (CUDA/MPS)
+- Display mode preferences
 
-The application uses two different resolutions:
-- Display Resolution: 1024x600 - The actual window size and final rendering resolution
-- API Resolution: 640x360 - The resolution used for Stable Diffusion API requests
+### Local Configuration (local_config.yaml)
+- Machine-specific overrides
+- Local model paths and cache settings
+- Custom generation parameters
+- ControlNet and GPT-2 model paths
+- Development settings
+- Personal preferences
+- Device-specific optimizations
+- Display preferences
 
-This dual-resolution approach provides several benefits:
-1. Faster API processing with smaller images
-2. Reduced bandwidth usage
-3. Better performance on lower-end systems
-4. High-quality display output through proper scaling
+Note: `local_config.yaml` is gitignored and should not be committed to version control.
 
-## Development
+## Debug Mode
 
-When running with the `--debug` flag, debug images are automatically saved during runtime:
-- Pre-API clock face images: debug_preapi_*.png (640x360)
-- Generated backgrounds: debug_background_*.png (640x360)
-- Clock face overlays: debug_clockface_*.png (1024x600)
+When running with `--debug`, the following debug files are generated in the `debug/` directory:
 
-The debug mode also provides verbose output about:
-- API requests and responses
-- Background update timing
-- Color extraction results
+- `debug_prerender_*.png`: Clock face pre-rendering
+- `debug_control_*.png`: ControlNet conditioning images
+- `debug_background_*.png`: Generated backgrounds
+- `debug_composite_*.png`: Final composite views
+- `debug_prompts.log`: Raw and enhanced prompt pairs
+
+Debug mode also provides detailed logging about:
+- Generation pipeline operations
+- ControlNet conditioning
+- GPT-2 prompt enhancement
+- Background generation
+- Performance metrics
+- Movement calculations
+- Model loading and memory usage
+
+## Hardware Acceleration
+
+The application supports multiple acceleration backends:
+
+### NVIDIA GPUs (CUDA)
+- Recommended for Windows and Linux
+- Requires CUDA-capable GPU
+- Minimum 8GB VRAM recommended
+
+### Apple Silicon (MPS)
+- Native support for M1 and newer Apple processors
+- Leverages Metal Performance Shaders
+- Optimized for unified memory architecture
+- Recommended 16GB unified memory
+
+### CPU Fallback
+- Available when no GPU acceleration is present
+- Significantly slower performance
+- Not recommended for regular use
+
+## Resolution Management
+
+The application uses two resolution modes:
+- Display: 1024x600 (window size)
+- Generation: 640x360 (Stable Diffusion input/output)
+
+This optimizes for:
+- GPU memory usage
+- Generation speed
+- System resources
+- Display quality
+
+## Models
+
+The application uses three main AI models:
+1. Stable Diffusion (default: revAnimated) - Background generation
+2. ControlNet - Composition control and guidance
+3. GPT-2 - Prompt enhancement and refinement
 
 ## License
 
