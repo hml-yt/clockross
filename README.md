@@ -53,20 +53,23 @@ An elegant analog clock application that uses local Stable Diffusion (via Diffus
 
 ## Installation
 
-1. Clone the repository
-2. Run the setup script:
-   ```bash
-   ./setup-clockross.sh
-   ```
-   This will:
-   - Create a virtual environment
-   - Install dependencies
-   - Configure initial settings
-   - Download required models (Stable Diffusion, ControlNet, GPT-2)
-   - Create a template local_config.yaml
-   - Detect and configure appropriate acceleration (CUDA/MPS)
+For standard installation on a Jetson Orin Nano, simply run:
+```bash
+curl bit.ly/clockross-setup | sudo bash
+```
 
-Note: For Jetson Orin Nano devices, use the setup script above for standard installation.
+This single command will:
+- Clone the repository
+- Create and configure the virtual environment
+- Install all dependencies
+- Configure initial settings
+- Download required models (Stable Diffusion, ControlNet, GPT-2)
+- Create a template local_config.yaml
+- Detect and configure appropriate acceleration (CUDA/MPS)
+- Set up the clock to start automatically on device boot
+- Configure system service for automatic updates
+
+Note: This installation method is designed to run on JetPack 6.1 on Jetson Orin Nano.
 
 ## Development Setup
 
@@ -76,6 +79,8 @@ For development purposes, follow these steps instead:
    ```bash
    python3.10 -m venv venv
    ```
+
+   python3.13 might not run yet, since some of the dependencies are not compatible with python 3.13 yet.
 
 2. Activate the virtual environment:
    ```bash
@@ -139,10 +144,7 @@ Note: `local_config.yaml` is gitignored and should not be committed to version c
 When running with `--debug`, the following debug files are generated in the `debug/` directory:
 
 - `debug_prerender_*.png`: Clock face pre-rendering
-- `debug_control_*.png`: ControlNet conditioning images
 - `debug_background_*.png`: Generated backgrounds
-- `debug_composite_*.png`: Final composite views
-- `debug_prompts.log`: Raw and enhanced prompt pairs
 
 Debug mode also provides detailed logging about:
 - Generation pipeline operations
