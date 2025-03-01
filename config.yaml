@@ -69,11 +69,10 @@ animation:
 prompts:
   use_enhanced_prompts: true
   enhancer:
-    model: "prithivMLmods/Stark-Prompt-Extender"
+    model: "HuggingFaceTB/SmolLM2-1.7B-Instruct"
     max_length: 100
-    max_time: 5
-    temperature: 0.9
-    top_p: 0.4
+    temperature: 0.2
+    top_p: 0.9
     num_return_sequences: 1
     do_sample: true
   enabled_styles: [digital_art, concept_art, photo, anime, renaissance, painting, watercolor, minimalist, pixel_art]

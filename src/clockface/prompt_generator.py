@@ -43,24 +43,11 @@ class EnhancedPromptStrategy(PromptStrategy):
             enhancer_config = self.prompt_config['enhancer']
             device = get_best_device()
             
-            if device == "cuda":
-                model_kwargs = {
-                    "attn_implementation": "flash_attention_2",
-                    "torch_dtype": torch.float16,
-                    "device_map": "auto",
-                    "use_cache": True,
-                }
-            else:
-                model_kwargs = {}
+            # Use SmolLM2 model
+            checkpoint = "HuggingFaceTB/SmolLM2-1.7B-Instruct"
             
-            self.model = AutoModelForCausalLM.from_pretrained(
-                enhancer_config['model'],
-                **model_kwargs
-            )
-            self.tokenizer = AutoTokenizer.from_pretrained(enhancer_config['model'])
-            
-            if device == "cuda":
-                self.model = self.model.to(device)
+            self.tokenizer = AutoTokenizer.from_pretrained(checkpoint)
+            self.model = AutoModelForCausalLM.from_pretrained(checkpoint).to(device)
     
     def generate(self, theme, description, style, style_details):
         """Generate a prompt using the AI-enhanced strategy"""
@@ -71,22 +58,43 @@ class EnhancedPromptStrategy(PromptStrategy):
             self._initialize_model()
             enhancer_config = self.prompt_config['enhancer']
             
-            inputs = self.tokenizer(base_prompt, return_tensors="pt")
-            if torch.cuda.is_available():
-                inputs = {k: v.cuda() for k, v in inputs.items()}
+            # Create a message for the chat template
+            messages = [{
+                "role": "system", 
+                "content": "You are a helpful assistant that enhances image prompts. Do not return any text other than the enhanced prompt."
+            }, {
+                "role": "user", 
+                "content": base_prompt
+            }]
+
+            device = get_best_device()
             
-            gen_tokens = self.model.generate(
-                **inputs,
-                max_length=enhancer_config['max_length'],
-                max_time=enhancer_config['max_time'],
-                num_return_sequences=enhancer_config['num_return_sequences'],
+            # Apply chat template
+            input_text = self.tokenizer.apply_chat_template(messages, tokenize=False)
+            inputs = self.tokenizer.encode(input_text, return_tensors="pt").to(device)
+            
+            # Generate the enhanced prompt
+            outputs = self.model.generate(
+                inputs,
+                max_new_tokens=enhancer_config['max_length'],
                 temperature=enhancer_config['temperature'],
                 top_p=enhancer_config['top_p'],
                 do_sample=enhancer_config['do_sample'],
-                pad_token_id=self.tokenizer.eos_token_id
             )
             
-            enhanced_prompt = self.tokenizer.batch_decode(gen_tokens, skip_special_tokens=True)[0]
+            # Decode the generated text and extract just the enhanced prompt
+            enhanced_prompt = self.tokenizer.decode(outputs[0])
+            
+            # Find the last "Enhanced Prompt:" marker if it exists
+            if "Enhanced Prompt:" in enhanced_prompt:
+                enhanced_prompt = enhanced_prompt.split("Enhanced Prompt:")[-1].strip()
+            # If no marker, try to get content after the last assistant message
+            elif "<|im_start|>assistant" in enhanced_prompt:
+                enhanced_prompt = enhanced_prompt.split("<|im_start|>assistant")[-1].strip()
+            
+            # Clean up any remaining markers and quotes
+            enhanced_prompt = enhanced_prompt.replace("<|im_end|>", "").strip()
+            enhanced_prompt = enhanced_prompt.strip('"').strip()
             
             enhancement_time = time.time() - start_time
             print(f"Prompt enhancement took {enhancement_time:.2f}s")
