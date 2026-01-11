@@ -1,18 +1,26 @@
 import time
-import json
-from PIL import Image
-from datetime import datetime
-import threading
-import pygame
-import random
 import os
+import threading
+from datetime import datetime
+
+import pygame
+from PIL import Image
+
 from .prompt_generator import PromptGenerator
-from ..utils.image_utils import save_debug_image
-from ..utils.device_utils import get_best_device
-from ..config import Config
 from .diffusion_pipeline import DiffusionPipeline
+from ..utils.image_utils import save_debug_image
+from ..config import Config
 
 class BackgroundUpdater:
+    # Watchdog timeout - if a thread runs longer than this, consider it hung
+    WATCHDOG_TIMEOUT = 120  # seconds
+    # Number of generations between GPU cache cleanup
+    CACHE_CLEANUP_INTERVAL = 50
+    # Maximum consecutive failures before forcing a longer backoff
+    MAX_CONSECUTIVE_FAILURES = 3
+    # Backoff multiplier after max failures (multiply update_interval by this)
+    FAILURE_BACKOFF_MULTIPLIER = 3
+    
     def __init__(self, debug=False):
         self.config = Config()
         self.debug = debug
@@ -26,7 +34,12 @@ class BackgroundUpdater:
         self.last_attempt = 0
         self.is_updating = False
         self.update_thread = None
+        self.update_thread_start_time = 0  # Track when thread started for watchdog
         self.prompt_generator = PromptGenerator()
+        
+        # Reliability tracking
+        self.generation_count = 0  # Track generations for periodic cleanup
+        self.consecutive_failures = 0  # Track failures for backoff logic
         
         # Initialize pipeline
         self.pipeline = DiffusionPipeline(debug=debug)
@@ -110,6 +123,7 @@ class BackgroundUpdater:
     
     def _do_update(self, hands_surface):
         """Internal method that runs in a separate thread to update the background"""
+        success = False
         try:
             new_bg = self._get_background_image(hands_surface)
             if new_bg:
@@ -123,13 +137,44 @@ class BackgroundUpdater:
                     if self.surface_manager:
                         self.surface_manager.update_background(new_bg)
                     
+                    # Track successful generation
+                    self.generation_count += 1
+                    self.consecutive_failures = 0  # Reset failure counter on success
+                    success = True
+                    
                     if self.debug:
                         print(f"Background updated at {datetime.now().strftime('%H:%M:%S')}")
                         print(f"New brightest color: RGB{self.current_color[:3]} (15% opacity)")
+                        print(f"Generation count: {self.generation_count}")
+                
+                # Periodic GPU cache cleanup (outside lock to avoid blocking)
+                if self.generation_count % self.CACHE_CLEANUP_INTERVAL == 0:
+                    self._periodic_cleanup()
+            else:
+                # Generation returned None (failed)
+                with self.lock:
+                    self.consecutive_failures += 1
+                    if self.debug:
+                        print(f"Generation failed. Consecutive failures: {self.consecutive_failures}")
+        except Exception as e:
+            # Catch any unexpected errors in the update thread
+            print(f"Unexpected error in background update thread: {e}")
+            with self.lock:
+                self.consecutive_failures += 1
         finally:
             with self.lock:
                 self.is_updating = False
                 self.update_thread = None
+                self.update_thread_start_time = 0
+    
+    def _periodic_cleanup(self):
+        """Perform periodic GPU memory cleanup to prevent fragmentation"""
+        try:
+            if self.debug:
+                print(f"Performing periodic GPU cache cleanup (every {self.CACHE_CLEANUP_INTERVAL} generations)")
+            self.pipeline._empty_cache()
+        except Exception as e:
+            print(f"Error during periodic cleanup: {e}")
     
     def _interpolate_color(self, color1, color2, progress):
         """Interpolate between two colors"""
@@ -152,16 +197,80 @@ class BackgroundUpdater:
             # Interpolate between previous and current color
             return self._interpolate_color(self.previous_color, self.current_color, progress)
     
+    def _check_and_recover_stuck_thread(self, current_time):
+        """Check if update thread is stuck and recover if necessary.
+        
+        Returns True if recovery was performed (caller should proceed with new update).
+        Returns False if thread is still legitimately running.
+        Must be called with self.lock held.
+        """
+        if not self.is_updating:
+            return False
+            
+        # Check if thread exists and is still alive
+        if self.update_thread is not None and self.update_thread.is_alive():
+            # Thread is running - check if it's exceeded the watchdog timeout
+            elapsed = current_time - self.update_thread_start_time
+            if elapsed > self.WATCHDOG_TIMEOUT:
+                print(f"WARNING: Background update thread exceeded watchdog timeout ({elapsed:.1f}s > {self.WATCHDOG_TIMEOUT}s)")
+                print("Forcing recovery - thread will be orphaned (daemon thread will be cleaned up on exit)")
+                # Force reset the state - the old thread is orphaned but will eventually die
+                # or be cleaned up when the process exits (it's a daemon thread)
+                self.is_updating = False
+                self.update_thread = None
+                self.update_thread_start_time = 0
+                self.consecutive_failures += 1
+                # Perform emergency cache cleanup
+                try:
+                    self.pipeline._empty_cache()
+                except Exception as e:
+                    print(f"Error during emergency cache cleanup: {e}")
+                return True
+            else:
+                # Thread is still running within timeout - don't interfere
+                return False
+        else:
+            # Thread reference exists but thread is dead, or is_updating is True but no thread
+            # This is an inconsistent state - recover
+            print("WARNING: Inconsistent thread state detected (is_updating=True but thread dead/missing)")
+            self.is_updating = False
+            self.update_thread = None
+            self.update_thread_start_time = 0
+            return True
+    
+    def _get_effective_update_interval(self):
+        """Get the effective update interval, accounting for failure backoff.
+        
+        Must be called with self.lock held.
+        """
+        if self.consecutive_failures >= self.MAX_CONSECUTIVE_FAILURES:
+            backoff_interval = self.update_interval * self.FAILURE_BACKOFF_MULTIPLIER
+            if self.debug:
+                print(f"Applying failure backoff: {backoff_interval}s (normal: {self.update_interval}s)")
+            return backoff_interval
+        return self.update_interval
+
     def update_background(self, hands_surface):
         """Start a background update if conditions are met"""
         current_time = time.time()
         with self.lock:
+            # First, check for and recover from stuck threads (watchdog)
+            self._check_and_recover_stuck_thread(current_time)
+            
+            # Get effective interval (may be longer if we've had consecutive failures)
+            effective_interval = self._get_effective_update_interval()
+            
             # Don't update if we're already updating or if the pipeline is loading
-            if self.is_updating or self.pipeline.is_loading or (current_time - self.last_attempt) < self.update_interval:
+            if self.is_updating or self.pipeline.is_loading:
+                return
+            
+            # Check if enough time has passed since last attempt
+            if (current_time - self.last_attempt) < effective_interval:
                 return
                 
             self.is_updating = True
             self.last_attempt = current_time
+            self.update_thread_start_time = current_time  # Track for watchdog
             
             # Create and start a new thread for the update
             self.update_thread = threading.Thread(
@@ -173,7 +282,9 @@ class BackgroundUpdater:
     
     def should_update(self):
         """Check if it's time for a background update"""
-        return time.time() - self.last_attempt >= self.update_interval
+        with self.lock:
+            effective_interval = self._get_effective_update_interval()
+            return time.time() - self.last_attempt >= effective_interval
     
     def reload_pipeline(self, complete_callback=None, error_callback=None):
         """Reload the pipeline with new configuration"""

@@ -7,8 +7,10 @@ PyYAML>=6.0.1
 diffusers
 transformers
 accelerate
-xformers
-torch>=2.0.0 
-triton
+torch>=2.0.0
 compel
-flash-attn>=2.0.0
+
+# Linux/CUDA-only packages (not available on macOS)
+xformers; sys_platform == 'linux'
+triton; sys_platform == 'linux'
+flash-attn>=2.0.0; sys_platform == 'linux'

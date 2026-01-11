@@ -2,6 +2,7 @@
 venv/
 env/
 .env/
+.venv/
 
 # macOS system files
 .DS_Store
@@ -21,10 +22,10 @@ __pycache__/
 
 # IDE settings
 .vscode/
-.idea/ 
+.idea/
 
 # Dynamic settings
-local_config.yaml 
+local_config.yaml
 
 # Snapshots
 snapshots/
